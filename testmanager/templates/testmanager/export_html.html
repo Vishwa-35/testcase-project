@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Cases Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'testmanager/css/export_html.css' %}">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="export-header">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="d-flex align-items-center mb-2">
+                        <img src="{% static 'testmanager/images/tvs-logo.png' %}" 
+                             alt="TVS Motor Company Logo" 
+                             style="height: 50px; width: auto; margin-right: 15px; background: white; padding: 5px; border-radius: 5px; display: block;"
+                             onerror="console.error('Logo failed to load'); this.style.display='none';">
+                        <div>
+                            <h1 class="mb-0"><i class="bi bi-file-earmark-code me-3"></i>Test Cases Export</h1>
+                            <p class="mb-2 text-muted">HTML Test Report – Latest Version</p>
+                        </div>
+                    </div>
+                    <p class="mb-2">
+                        {% if is_snapshot %}
+                            {# FIX: Use exported_at for snapshots - immutable timestamp #}
+                            Generated on {{ exported_at|date:"F d, Y H:i" }}
+                        {% else %}
+                            {# Live export (preview) - shows current time #}
+                            Generated on {{ now|date:"F d, Y H:i" }}
+                        {% endif %}
+                    </p>
+                    <!-- Export Readiness Status -->
+                    {% if all_completed is not None %}
+                    <div class="mt-3 p-3 rounded" style="background: #3c85ce; border: 1px solid #dee2e6;">
+                        <div class="d-flex align-items-center">
+                            <i class="bi {% if all_completed %}bi-check-circle-fill text-success{% else %}bi-exclamation-triangle-fill text-warning{% endif %} me-2" style="font-size: 1.2rem;"></i>
+                            <div>
+                                <strong>{% if all_completed %}All Tests Completed{% else %}Tests In Progress{% endif %}</strong>
+                                <div class="small">{% if all_completed %}{{ executed_count }}/{{ total_count }} tests executed {% else %}{{ executed_count }}/{{ total_count }} tests executed - Complete all tests to enable snapshot creation{% endif %}</div>
+                            </div>
+                        </div>
+                        {% if all_completed and is_manager and user.is_authenticated %}
+                        <div class="mt-2">
+                            <a
+                                href="{% url 'create_new_test_instance' %}"
+                                class="btn btn-sm btn-success"
+                                onclick="return confirm('This will freeze the current active version as a historical snapshot and redirect you to create a new test instance. Continue?');"
+                            >
+                                <i class="bi bi-save me-1"></i>
+                                Create Snapshot & Reset for Next Cycle
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                <!-- Share Button -->
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#shareModal" style="background: #0052A5; border: none; padding: 10px 20px; font-weight: 600;">
+                    <i class="bi bi-share me-2"></i>Share
+                </button>
+            </div>
+            
+            <!-- Share Modal -->
+            <div class="modal fade" id="shareModal" tabindex="-1" aria-labelledby="shareModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content share-modal-content">
+                        <div class="modal-header share-modal-header">
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            <div class="share-icon-circle">
+                                <i class="bi bi-link-45deg"></i>
+                            </div>
+                            <h5 class="modal-title share-modal-title" id="shareModalLabel">
+                                Share Export
+                            </h5>
+                            <p class="share-modal-subtitle">Share this test cases export with your team</p>
+                        </div>
+                        <div class="modal-body share-modal-body">
+                            <!-- Share Link Section -->
+                            <div class="share-link-section">
+                                <label class="share-link-label">Share your link</label>
+                                <div class="share-link-input-group">
+                                    <input type="text" class="share-link-input" id="shareLinkInput" value="" readonly>
+                                    <button class="share-link-copy-btn" onclick="copyLinkFromInput()" title="Copy link">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Share To Section -->
+                            <div class="share-to-section">
+                                <label class="share-to-label">Share to</label>
+                                <div class="share-icons-container">
+                                    <button class="share-icon-btn" onclick="shareToTeams()" title="Share to Teams">
+                                        <div class="share-icon-circle-icon teams-icon">
+                                            <i class="bi bi-microsoft"></i>
+                                        </div>
+                                        <span class="share-icon-name">Teams</span>
+                                    </button>
+                                    <button class="share-icon-btn" onclick="shareToOutlook()" title="Share via Outlook">
+                                        <div class="share-icon-circle-icon outlook-icon">
+                                            <i class="bi bi-envelope"></i>
+                                        </div>
+                                        <span class="share-icon-name">Outlook</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Project Overview Section -->
+        <div class="row g-3 mt-4 mb-4">
+            <div class="col-12">
+                <div class="card" style="background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <h5 class="mb-3" style="font-size: 1.1rem; font-weight: 600;">
+                        <i class="bi bi-info-circle me-2"></i>Project Overview
+                    </h5>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <div class="small text-muted">Project Code</div>
+                            <div class="fw-semibold">{{ project_code|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">VCU Platform</div>
+                            <div class="fw-semibold">{{ vcu_platform|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Hardware Part Number</div>
+                            <div class="fw-semibold">{{ hw_part_number|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Software Part Number</div>
+                            <div class="fw-semibold">{{ sw_part_number|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Project Stage</div>
+                            <div class="fw-semibold">{{ project_stage|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Developer</div>
+                            <div class="fw-semibold">{{ developer|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Test Engineer</div>
+                            <div class="fw-semibold">{{ test_engineer|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Application SW Version</div>
+                            <div class="fw-semibold">{{ app_sw_version|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Bootloader SW Version</div>
+                            <div class="fw-semibold">{{ bootloader_sw_version|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Checksum Value</div>
+                            <div class="fw-semibold">{{ checksum_value|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">DBC test_it</div>
+                            <div class="fw-semibold">{{ dbc_test_it|default:"-" }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters and Pie Chart Section -->
+        <div class="row g-3 mt-4 mb-4">
+            <!-- Filters Column -->
+            <div class="col-md-6">
+                <div class="kpi-card" style="background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <h5 class="mb-3" style="font-size: 1rem; font-weight: 600;">
+                        <i class="bi bi-funnel me-2"></i>Filters
+                    </h5>
+                    <div class="row g-2">
+                        <div class="col-md-12">
+                            <label class="form-label small"><strong>Sheet:</strong></label>
+                            <select class="form-select form-select-sm" id="sheetFilter" onchange="updateFilters()">
+                                <option value="">All Sheets</option>
+                                {% for sheet in sheet_names %}
+                                <option value="{{ sheet }}" {% if selected_sheet == sheet %}selected{% endif %}>{{ sheet }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label small"><strong>SW Part Number:</strong></label>
+                            <select class="form-select form-select-sm" id="swFilter" onchange="updateFilters()">
+                                <option value="">All SW Part Numbers</option>
+                                {% for sw in sw_list %}
+                                <option value="{{ sw }}" {% if selected_sw == sw %}selected{% endif %}>{{ sw }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label small"><strong>Feature:</strong></label>
+                            <select class="form-select form-select-sm" id="featureFilter" onchange="updateFilters()">
+                                <option value="">All Features</option>
+                                {% for feature in feature_list %}
+                                {% if feature %}
+                                <option value="{{ feature }}" {% if selected_feature == feature %}selected{% endif %}>{{ feature|default:"-" }}</option>
+                                {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Pie Chart Column -->
+            <div class="col-md-6">
+                <div class="chart-container" style="background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <h4 class="mb-3 text-center" style="font-size: 1.1rem; font-weight: 600;">
+                        <i class="bi bi-pie-chart me-2"></i>Status Distribution
+                    </h4>
+                    <div class="chart-box" style="height: 300px; position: relative;">
+                        <canvas id="statusPie" aria-label="Status distribution pie chart" role="img"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Cards Row -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="kpi-card" style="background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <div class="kpi-title" style="font-size: 0.85rem; color: #6c757d; margin-bottom: 10px;">Pass Current Total</div>
+                    <div class="kpi-progress-wrapper" style="position: relative; width: 100px; height: 100px; margin: 0 auto 15px;">
+                        <canvas id="passProgress" width="100" height="100"></canvas>
+                        <div class="kpi-percentage" id="passPercentage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: 700; color: #28a745;">{{ pass_percentage|default:0|floatformat:2 }}%</div>
+                    </div>
+                    <div class="kpi-details" style="text-align: center;">
+                        <div style="font-size: 0.75rem; color: #6c757d;">Total: <strong id="passTotal">{{ passed_count|default:0 }}</strong></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card" style="background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <div class="kpi-title" style="font-size: 0.85rem; color: #6c757d; margin-bottom: 10px;">Fail Current Total</div>
+                    <div class="kpi-progress-wrapper" style="position: relative; width: 100px; height: 100px; margin: 0 auto 15px;">
+                        <canvas id="failProgress" width="100" height="100"></canvas>
+                        <div class="kpi-percentage" id="failPercentage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: 700; color: #dc3545;">{{ fail_percentage|default:0|floatformat:2 }}%</div>
+                    </div>
+                    <div class="kpi-details" style="text-align: center;">
+                        <div style="font-size: 0.75rem; color: #6c757d;">Total: <strong id="failTotal">{{ failed_count|default:0 }}</strong></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card" style="background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <div class="kpi-title" style="font-size: 0.85rem; color: #6c757d; margin-bottom: 10px;">Not Executed Current Total</div>
+                    <div class="kpi-progress-wrapper" style="position: relative; width: 100px; height: 100px; margin: 0 auto 15px;">
+                        <canvas id="notExecProgress" width="100" height="100"></canvas>
+                        <div class="kpi-percentage" id="notExecPercentage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: 700; color: #ffc107;">{{ not_exec_percentage|default:0|floatformat:2 }}%</div>
+                    </div>
+                    <div class="kpi-details" style="text-align: center;">
+                        <div style="font-size: 0.75rem; color: #6c757d;">Total: <strong id="notExecTotal">{{ not_executed_count|default:0 }}</strong></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card" style="background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <div class="kpi-title" style="font-size: 0.85rem; color: #6c757d; margin-bottom: 10px;">Total Test Cases</div>
+                    <div class="kpi-progress-wrapper" style="position: relative; width: 100px; height: 100px; margin: 0 auto 15px;">
+                        <canvas id="totalProgress" width="100" height="100"></canvas>
+                        <div class="kpi-percentage" id="totalPercentage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: 700; color: #0052A5;">{{ executed_percentage|default:0|floatformat:2 }}%</div>
+                    </div>
+                    <div class="kpi-details" style="text-align: center;">
+                        <div style="font-size: 0.75rem; color: #6c757d;">Total: <strong id="totalTestCases">{{ total_test_cases|default:0 }}</strong></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bar Chart Section -->
+        <div class="row g-4 mt-2 mb-4">
+            <div class="col-12">
+                <div class="chart-container" style="background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <h4 class="mb-3 text-center" style="font-size: 1.1rem; font-weight: 600;" id="barChartTitle">
+                        <i class="bi bi-bar-chart me-2"></i><span id="barChartTitleText">Test Cases Distribution</span>
+                    </h4>
+                    <div class="chart-box" style="height: 350px; position: relative;">
+                        <canvas id="swBarChart" aria-label="Bar chart" role="img"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>SL.NO</th>
+                            <th>SW Part Number</th>
+                            <th>Feature</th>
+                            <th>Requirement ID</th>
+                            <th>Requirement Description</th>
+                            <th>Test Case ID</th>
+                            <th>Test Case Summary</th>
+                            <th>Pre Conditions</th>
+                            <th>Inputs</th>
+                            <th>Periodic Time</th>
+                            <th>Test Steps</th>
+                            <th>Expected Result</th>
+                            <th>Status</th>
+                            <th>Reports</th>
+                            <th>Comments</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for test in tests %}
+                        <tr>
+                            <td><strong>{{ test.sl_no }}</strong></td>
+                            <td>{{ test.sw_part_number }}</td>
+                            <td>{{ test.feature }}</td>
+                            <td>{{ test.display_requirement_id|default:test.requirement_id|default:"" }}</td>
+                            <td>{{ test.requirement_description }}</td>
+                            <td><code>{{ test.display_test_case_id|default:test.test_case_id|default:"" }}</code></td>
+                            <td>{{ test.test_case_summary }}</td>
+                            <td>{{ test.pre_conditions }}</td>
+                            <td>{{ test.inputs }}</td>
+                            <td>{{ test.periodic_time }}</td>
+                            <td>{{ test.test_steps }}</td>
+                            <td>{{ test.expected_result }}</td>
+                            <td>
+                                {% if test.exec %}
+                                    {% with st=test.exec.status|default:""|upper %}
+                                        {% if st == "PASS" %}
+                                            <span class="badge bg-success">Pass</span>
+                                        {% elif st == "FAIL" %}
+                                            <span class="badge bg-danger">Fail</span>
+                                        {% elif st == "NOT RELEVANT" or st == "NOT_RELEVANT" %}
+                                            <span class="badge bg-info text-white">Not Relevant</span>
+                                        {% elif st %}
+                                            <span class="badge bg-warning text-dark">{{ test.exec.status }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Not Executed</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                {% else %}
+                                    <span class="badge bg-secondary">Not Executed</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if test.exec and test.exec.reports %}
+                                    {% if test.exec.reports|lower|slice:":5" == "http:" or test.exec.reports|lower|slice:":6" == "https:" %}
+                                        <a href="{{ test.exec.reports }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-box-arrow-up-right me-1"></i>Open Report
+                                        </a>
+                                    {% else %}
+                                        <small>{{ test.exec.reports|truncatewords:10 }}</small>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if test.exec and test.exec.comments %}
+                                    <small>{{ test.exec.comments|truncatewords:10 }}</small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="15" class="text-center text-muted py-5">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                No test cases found.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="footer-note">
+            <p class="mb-0 text-muted">
+                <i class="bi bi-lock me-2"></i>
+                This is a view-only export. Data is read-only and cannot be modified.
+            </p>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Chart Data -->
+    {{ status_labels|json_script:"statusLabels" }}
+    {{ status_values|json_script:"statusValues" }}
+    {{ sheet_labels|json_script:"sheetLabels" }}
+    {{ sheet_values|json_script:"sheetValues" }}
+    {{ bar_mode|json_script:"barMode" }}
+    
+    <script>
+        window.PASS_PERCENTAGE = Number("{{ pass_percentage|default:'0' }}");
+        window.FAIL_PERCENTAGE = Number("{{ fail_percentage|default:'0' }}");
+        window.NOT_EXEC_PERCENTAGE = Number("{{ not_exec_percentage|default:'0' }}");
+        window.EXECUTED_PERCENTAGE = Number("{{ executed_percentage|default:'0' }}");
+        
+        // Set the share link input value when modal opens
+        document.addEventListener('DOMContentLoaded', function() {
+            const shareModal = document.getElementById('shareModal');
+            const shareLinkInput = document.getElementById('shareLinkInput');
+            
+            if (shareModal && shareLinkInput) {
+                shareModal.addEventListener('show.bs.modal', function() {
+                    shareLinkInput.value = window.location.href;
+                });
+            }
+        });
+
+        function updateFilters() {
+            const sheet = document.getElementById('sheetFilter').value;
+            const sw = document.getElementById('swFilter').value;
+            const feature = document.getElementById('featureFilter').value;
+            
+            const params = new URLSearchParams();
+            if (sheet) params.append('sheet', sheet);
+            if (sw) params.append('sw', sw);
+            if (feature) params.append('feature', feature);
+            
+            window.location.href = '{% url "export_html" %}?' + params.toString();
+        }
+    </script>
+    <script src="{% static 'testmanager/js/export_html.js' %}"></script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+{% extends 'testmanager/base.html' %}
+{% block title %}Add Test Case{% endblock %}
+{% load static %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'testmanager/css/add.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid pt-3">
+    <div class="row justify-content-center">
+        <div class="col-lg-10 col-xl-9">
+
+            <div class="add-form-card card">
+                <div class="card-header-custom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="mb-1">
+                                <i class="bi bi-plus-circle me-2"></i>Add New Test Case
+                            </h3>
+                            <p class="mb-0 opacity-90">Create a new test case entry - all selections made in the form below</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <form method="POST" action="{% url 'testcase_add' %}" id="addTestCaseForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.GET.next|default:'' }}">
+
+                        <!-- Selection Fields (Inside Form) -->
+                        <div class="form-section">
+                            <h5 class="mb-3 text-primary">
+                                <i class="bi bi-funnel me-2"></i>Selection
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">SW Part Number <span class="text-danger">*</span></label>
+                                    <input type="text" 
+                                           name="sw_part_number" 
+                                           id="swPartNumberSelect" 
+                                           class="form-control" 
+                                           list="swOptions"
+                                           value="{% if request.POST.sw_part_number %}{{ request.POST.sw_part_number }}{% elif sw_list|length == 1 %}{{ sw_list.0 }}{% endif %}"
+                                           placeholder="Enter or select SW Part Number"
+                                           required>
+                                    <datalist id="swOptions">
+                                        {% for sw in sw_list %}
+                                            <option value="{{ sw }}">
+                                        {% endfor %}
+                                    </datalist>
+                                    {% if sw_list|length == 1 %}
+                                    <small class="text-muted">Auto-filled (only one available). You can change it.</small>
+                                    {% else %}
+                                    <small class="text-muted">Select from list or type a new SW Part Number</small>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Application SW Version <span class="text-danger">*</span></label>
+                                    <input type="text" 
+                                           name="app_sw_version" 
+                                           id="versionSelect" 
+                                           class="form-control" 
+                                           list="versionOptions"
+                                           value="{% if request.POST.app_sw_version %}{{ request.POST.app_sw_version }}{% elif active_versions|length == 1 %}{{ active_versions.0 }}{% endif %}"
+                                           placeholder="Enter or select version"
+                                           required>
+                                    <datalist id="versionOptions">
+                                        {% for version in active_versions %}
+                                            <option value="{{ version }}">
+                                        {% endfor %}
+                                    </datalist>
+                                    {% if active_versions|length == 1 %}
+                                    <small class="text-muted">Auto-filled (latest version). You can change it.</small>
+                                    {% else %}
+                                    <small class="text-muted">Select from list or type a new version name</small>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Sheet <span class="text-danger">*</span></label>
+                                    <input type="text" 
+                                           name="sheet_name" 
+                                           id="sheetSelect" 
+                                           class="form-control" 
+                                           list="sheetOptions"
+                                           value="{% if request.POST.sheet_name %}{{ request.POST.sheet_name }}{% elif available_sheets|length == 1 %}{{ available_sheets.0 }}{% endif %}"
+                                           placeholder="Enter or select sheet name"
+                                           required>
+                                    <datalist id="sheetOptions">
+                                        {% for sheet in available_sheets %}
+                                            <option value="{{ sheet }}">
+                                        {% endfor %}
+                                    </datalist>
+                                    {% if available_sheets|length == 1 %}
+                                    <small class="text-muted">Auto-filled (only one available). You can change it.</small>
+                                    {% else %}
+                                    <small class="text-muted">Select from list or type a new sheet name</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Basic Information -->
+                        <div class="form-section">
+                            <h5 class="mb-3 text-primary">
+                                <i class="bi bi-info-circle me-2"></i>Basic Information
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">SL.NO</label>
+                                    <input type="text" name="sl_no" class="form-control" 
+                                           value="{{ request.POST.sl_no|default:next_sl_no }}" readonly>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">SW Part Number (Display)</label>
+                                    <input type="text" name="sw_part_number_display" id="swPartNumberDisplay" class="form-control" 
+                                           value="{{ request.POST.sw_part_number|default:'' }}" readonly>
+                                    <small class="text-muted">Synced from selection above</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Feature</label>
+                                    <input type="text" name="feature" class="form-control" 
+                                           value="{{ request.POST.feature|default:'' }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Requirement ID</label>
+                                    <input type="text" name="requirement_id" class="form-control" 
+                                           value="{{ request.POST.requirement_id|default:'' }}">
+                                </div>
+                            </div>
+                            <div class="row g-3 mt-2">
+                                <div class="col-12">
+                                    <label class="form-label">Requirement Description</label>
+                                    <textarea name="requirement_description" class="form-control" rows="2">{{ request.POST.requirement_description|default:'' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Test Case Details -->
+                        <div class="form-section">
+                            <h5 class="mb-3 text-primary">
+                                <i class="bi bi-clipboard-data me-2"></i>Test Case Details
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Test Case ID <span class="text-danger">*</span></label>
+                                    <input type="text" name="test_case_id" class="form-control" required autofocus 
+                                           value="{{ request.POST.test_case_id|default:'' }}">
+                                </div>
+                            <div class="row g-3 mt-2">
+                                <div class="col-12">
+                                    <label class="form-label">Test Case Summary</label>
+                                    <textarea name="test_case_summary" class="form-control" rows="2">{{ request.POST.test_case_summary|default:'' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Test Conditions -->
+                        <div class="form-section">
+                            <h5 class="mb-3 text-primary">
+                                <i class="bi bi-list-check me-2"></i>Test Conditions
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Pre Conditions</label>
+                                    <textarea name="pre_conditions" class="form-control" rows="3">{{ request.POST.pre_conditions|default:'' }}</textarea>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Inputs</label>
+                                    <textarea name="inputs" class="form-control" rows="3">{{ request.POST.inputs|default:'' }}</textarea>
+                                </div>
+                            </div>
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Periodic Time</label>
+                                    <input type="text" name="periodic_time" class="form-control" 
+                                           value="{{ request.POST.periodic_time|default:'' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Test Steps</label>
+                                    <textarea name="test_steps" class="form-control" rows="3">{{ request.POST.test_steps|default:'' }}</textarea>
+                                </div>
+                            </div>
+                            <div class="row g-3 mt-2">
+                                <div class="col-12">
+                                    <label class="form-label">Expected Result</label>
+                                    <textarea name="expected_result" class="form-control" rows="3">{{ request.POST.expected_result|default:'' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                            <a href="{% url 'testcase_list' %}" class="btn btn-secondary btn-custom">
+                                <i class="bi bi-x-circle me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-custom">
+                                <i class="bi bi-save me-1"></i>Save Test Case
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const swSelect = document.getElementById("swPartNumberSelect");
+    const versionSelect = document.getElementById("versionSelect");
+    const sheetSelect = document.getElementById("sheetSelect");
+    const swDisplay = document.getElementById("swPartNumberDisplay");
+    const form = document.getElementById("addTestCaseForm");
+    
+    // Sync SW Part Number display field (swSelect is now a text input)
+    if (swSelect && swDisplay) {
+        swSelect.addEventListener("input", function() {
+            swDisplay.value = this.value;
+        });
+        // Initial sync
+        if (swSelect.value) {
+            swDisplay.value = swSelect.value;
+        }
+    }
+    
+    // Note: versionSelect and sheetSelect are now text inputs with datalist
+    // They allow free text entry, so no need to lock them
+    
+    // Form validation: Ensure all required fields are filled
+    form.addEventListener("submit", function(e) {
+        const sw = swSelect ? swSelect.value.trim() : '';
+        const version = versionSelect ? versionSelect.value.trim() : '';
+        const sheet = sheetSelect ? sheetSelect.value.trim() : '';
+        
+        if (!sw || !version || !sheet) {
+            e.preventDefault();
+            alert("Please enter SW Part Number, Version, and Sheet before saving.");
+            return false;
+        }
+    });
+});
+</script>
+
+{% endblock %}

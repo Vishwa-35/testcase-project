@@ -1,0 +1,1330 @@
+{% extends 'testmanager/base.html' %}
+{% load static %}
+{% block title %}Test Cases{% endblock %}
+
+{% block extra_head %}
+<style>
+.sidebar {
+    position: fixed;
+    top: 65px;
+    left: 0;
+    height: calc(100vh - 65px);
+    width: 300px;
+    background: #fff;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    transition: transform 0.3s ease;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+.sidebar.collapsed {
+    transform: translateX(-100%);
+}
+
+.main-content {
+    margin-left: 300px;
+    transition: margin-left 0.3s ease;
+    flex: 1;
+    min-width: 0;
+}
+
+.main-content.expanded {
+    margin-left: 0;
+}
+
+.sidebar-toggle {
+    position: fixed;
+    top: 75px;
+    left: 300px;
+    z-index: 1001;
+    transition: left 0.3s ease;
+    padding: 10px 18px;      /* medium size */
+    font-size: 16px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.sidebar-toggle.collapsed {
+    left: 0;
+}
+
+.filter-card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.table-card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.table tbody tr {
+    height: 300px;
+    transition: all 0.3s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: scale(1.01);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.table tbody td {
+    vertical-align: top;
+    padding: 15px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.table thead th {
+    background: #0052A5;
+    color: white;
+    border: none;
+    padding: 15px;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.pagination-wrapper {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 0 0 10px 10px;
+    margin-top: -1px;
+}
+
+.page-link {
+    border-radius: 5px;
+    margin: 0 2px;
+    border: 1px solid #dee2e6;
+}
+
+.page-item.active .page-link {
+    background: #0052A5;
+    border-color: #0052A5;
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    .sidebar.show {
+        transform: translateX(0);
+    }
+    .main-content {
+        margin-left: 0;
+    }
+}
+
+/* ----------------------------------------------------
+ * BUTTON COLOR IMPROVEMENTS (LIST PAGE)
+ * ---------------------------------------------------- */
+
+/* Primary action buttons (Create / Apply Filters) */
+.btn-custom-primary {
+    background: #0052A5;
+    color: #ffffff;
+    border: none;
+    font-weight: 500;
+}
+
+.btn-custom-primary:hover {
+    background: #046CFF;
+    color: #ffffff;
+}
+
+/* Export / secondary action */
+.btn-custom-success {
+    background-color: #20c997;
+    color: #ffffff;
+    border: none;
+    font-weight: 500;
+}
+
+.btn-custom-success:hover {
+    background-color: #18b386;
+    color: #ffffff;
+}
+
+/* ----------------------------------------------------
+ * HEADER ACTION BUTTON COLORS (LIGHT BACKGROUND)
+ * ---------------------------------------------------- */
+
+/* Primary – Create Testcase */
+.btn-header-primary {
+    background: #0052A5 !important;
+    color: #ffffff !important;
+    border: none !important;
+    font-weight: 500;
+}
+
+.btn-header-primary:hover,
+.btn-header-primary:focus,
+.btn-header-primary:active {
+    background: #046CFF !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+
+/* Secondary – Export */
+.btn-header-secondary {
+    background-color: #0dcaf0 !important; /* soft cyan */
+    color: #ffffff !important;
+    border: none !important;
+    font-weight: 500;
+}
+
+.btn-header-secondary:hover,
+.btn-header-secondary:focus,
+.btn-header-secondary:active {
+    background-color: #0bb5d6 !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+
+/* Admin / Add New */
+.btn-header-success {
+    background-color: #198754 !important; /* Bootstrap success dark */
+    color: #ffffff !important;
+    border: none !important;
+    font-weight: 500;
+}
+
+.btn-header-success:hover,
+.btn-header-success:focus,
+.btn-header-success:active {
+    background-color: #157347 !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+</style>
+
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid pt-3 page-container p-0" style="display: flex; position: relative;">
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">
+                    <i class="bi bi-funnel me-2"></i>Filters
+                </h5>
+                <button class="btn btn-sm btn-outline-secondary d-md-none" onclick="toggleSidebar()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            
+            <form method="GET" class="filter-form">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Sheet
+                    </label>
+                    <select name="sheet" class="form-select form-select-sm" onchange="handleSheetChange(this)">
+                        <option value="">All Sheets</option>
+                        {% for s in sheets %}
+                            <option value="{{ s }}" {% if selected_sheet == s %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-tag me-1"></i>SW Part Number
+                    </label>
+                    <select name="sw" class="form-select form-select-sm" {% if not selected_sheet %}disabled{% endif %} onchange="this.form.submit()">
+                        <option value="">All</option>
+                        {% for sw in sw_list %}
+                            <option value="{{ sw }}" {% if selected_sw == sw %}selected{% endif %}>{{ sw }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {# VERSION SELECTION: Managers see ALL versions (active + inactive), Developers see only active #}
+                {% if is_manager %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-version me-1"></i>Application SW Version
+                    </label>
+                        <select name="version" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">All Versions</option>
+                            {% if version_list_with_status %}
+                                {% for v_info in version_list_with_status %}
+                                    {% if v_info.version %}
+                                    <option value="{{ v_info.version }}" 
+                                            {% if selected_version == v_info.version %}selected{% endif %}
+                                            {% if not v_info.is_active %}style="color: #6c757d;"{% endif %}>
+                                        {{ v_info.version }}{% if v_info.is_active %} (Active){% else %} (Inactive){% endif %}{% if v_info.is_locked %} 🔒{% endif %}
+                                    </option>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                {% for v in version_list %}
+                                    {% if v %}
+                                    <option value="{{ v }}" {% if selected_version == v %}selected{% endif %}>{{ v|default:"-" }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                        <small class="form-text text-muted">Managers can view historical versions</small>
+                </div>
+                {% endif %}
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-list-ul me-1"></i>Feature
+                    </label>
+                    <select name="feature" class="form-select form-select-sm" {% if not selected_sw %}disabled{% endif %} onchange="this.form.submit()">
+                        <option value="">All</option>
+                        {% for f in feature_list %}
+                            <option value="{{ f }}" {% if selected_feature == f %}selected{% endif %}>{{ f }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-search me-1"></i>Search
+                    </label>
+                    <input type="text" name="q" value="{{ search_query }}" placeholder="Search..." 
+                           class="form-control form-control-sm"
+                           onkeydown="if(event.key=='Enter') this.form.submit()">
+                </div>
+
+                <a href="{% url 'testcase_list' %}" class="btn btn-secondary btn-sm w-100" onclick="clearAllFilters(event)">
+                    <i class="bi bi-x-circle me-1"></i>Clear Filters
+                </a>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sidebar Toggle Button -->
+    <button class="btn sidebar-toggle shadow-sm" id="sidebarToggle" onclick="toggleSidebar()" style="background: rgba(255, 255, 255, 0.9); color: #0052A5; border: none;">
+        <i class="bi bi-list" id="toggleIcon"></i>
+    </button>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <div>
+            <!-- HEADER -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1 fw-bold">
+                        <i class="bi bi-list-check me-2 text-primary"></i>All Test Cases
+                    </h2>
+                    <p class="text-muted mb-0 small">Manage and track your test cases</p>
+                </div>
+
+                <div class="d-flex gap-2 align-items-center">
+                    {# CREATE NEW TEST INSTANCE: Tester and above can create new instances #}
+                    {% if can_create_instance %}
+                    <a href="{% url 'create_new_test_instance' %}"
+                       class="btn btn-header-primary">
+                        <i class="bi bi-plus-circle me-1"></i>Create New Test Instance
+                    </a>
+                    {% endif %}
+
+                    {# EXPORT: Manager only #}
+                    {% if can_export_reports %}
+                    <button type="button" class="btn btn-header-secondary" id="exportButton" onclick="showExportModal('excel')">
+                        <i class="bi bi-download me-1"></i>Export
+                    </button>
+                    {% endif %}
+
+{# ADD NEW TEST CASE: Manager or Developer only #}
+{% if is_manager or is_developer %}
+<a href="{% url 'testcase_add' %}" class="btn btn-header-success">
+    <i class="bi bi-plus-lg me-1"></i>Add New
+</a>
+{% endif %}
+
+                </div>
+            </div>
+
+            {% if tests|length == 0 %}
+            <div class="alert alert-info text-center">
+                <i class="bi bi-info-circle me-2"></i>No test cases found. Try adjusting your filters.
+            </div>
+            {% endif %}
+
+            <!-- TABLE -->
+            <div class="table-card card shadow-sm">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 320px;" class="text-center">Tested</th>
+                                    <th style="width: 320px;">SL.NO</th>
+                                    <th style="width: 320px;">SW Part Number</th>
+                                    <th style="width: 320px;">Feature</th>
+                                    <th style="width: 320px;">Requirement ID</th>
+                                    <th style="width: 320px;">Requirement Description</th>
+                                    <th style="width: 320px;">Test Case ID</th>
+                                    <th style="width: 320px;">Test Case Summary</th>
+                                    <th style="width: 320px;">Pre Conditions</th>
+                                    <th style="width: 320px;">Inputs</th>
+                                    <th style="width: 320px;">Periodic Time</th>
+                                    <th style="width: 320px;">Test Steps</th>
+                                    <th style="width: 320px;">Expected Result</th>
+                                    <th style="width: 320px;">Status</th>
+                                    <th style="width: 320px;">Reports</th>
+                                    <th style="width: 320px;">Comments</th>
+                                    <th style="width: 320px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for test in tests %}
+                                <tr id="row-{{ test.id }}" class="{% if highlight_id == test.id|stringformat:'s' %}table-warning{% endif %}">
+                                    <td class="text-center">
+                                        {% if is_manager %}
+                                            <input type="checkbox" 
+                                                   class="form-check-input tested-checkbox" 
+                                                   data-test-id="{{ test.id }}"
+                                                   {% if test.exec and test.exec.manager_approved %}checked{% endif %}
+                                                   onchange="toggleTestedStatus({ test_id }, this.checked)"
+                                                   title="Manager: Check to mark as tested">
+                                        {% else %}
+                                            <input type="checkbox" 
+                                                   {% if test.exec and test.exec.manager_approved %}checked{% endif %} 
+                                                   disabled 
+                                                   class="form-check-input" 
+                                                   title="{% if test.exec and test.exec.manager_approved %}Tested (Approved by Manager){% else %}Not Tested{% endif %}">
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ test.sl_no }}</td>
+                                    <td>{{ test.sw_part_number }}</td>
+                                    <td>{{ test.feature }}</td>
+                                    <td>{{ test.display_requirement_id|default:test.requirement_id|default:"" }}</td>
+                                    <td>{{ test.requirement_description }}</td>
+                                    <td><strong>{{ test.display_test_case_id|default:test.test_case_id }}</strong></td>
+                                    <td>{{ test.test_case_summary }}</td>
+                                    <td>{{ test.pre_conditions }}</td>
+                                    <td>{{ test.inputs }}</td>
+                                    <td>{{ test.periodic_time }}</td>
+                                    <td>{{ test.test_steps }}</td>
+                                    <td>{{ test.expected_result }}</td>
+                                    <td>
+                                        {% if test.exec %}
+                                            {% with st=test.exec.status|default:""|upper %}
+                                                {% if st == "PASS" %}
+                                                    <span class="badge bg-success">PASS</span>
+                                                {% elif st == "FAIL" %}
+                                                    <span class="badge bg-danger">FAIL</span>
+                                                {% elif st %}
+                                                    <span class="badge bg-warning text-dark">{{ test.exec.status }}</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">-</span>
+                                                {% endif %}
+                                            {% endwith %}
+                                        {% else %}
+                                            <span class="badge bg-secondary">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if test.exec and test.exec.reports %}
+                                            {% if test.exec.reports|lower|slice:":5" == "http:" or test.exec.reports|lower|slice:":6" == "https:" %}
+                                                <a href="{{ test.exec.reports }}" target="_blank" class="btn btn-sm btn-link p-0">Open</a>
+                                            {% else %}
+                                                <small>{{ test.exec.reports|truncatewords:5 }}</small>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if test.exec %}
+                                            <small>{{ test.exec.comments|default:"-"|truncatewords:5 }}</small>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if test.exec and test.exec.status %}
+                                            {# Test execution exists with status saved - show View for all users #}
+                                            <a class="btn btn-sm" 
+                                               style="background: #0052A5; color: white; border: none;"
+                                               href="{% url 'view_test_execution' test.id %}?next={{ request.get_full_path|urlencode }}{% if selected_version %}&version={{ selected_version }}{% endif %}">
+                                                <i class="bi bi-eye me-1"></i>View
+                                            </a>
+                                            {% if is_manager %}
+                                                {# Managers can also edit #}
+                                                <a class="btn btn-sm ms-1" 
+                                                   style="background: #20c997; color: white; border: none;"
+                                                   href="{% url 'testcase_test_it' test.id %}?next={{ request.get_full_path|urlencode }}{% if selected_version %}&version={{ selected_version }}{% endif %}">
+                                                    <i class="bi bi-pencil me-1"></i>Edit
+                                                </a>
+                                            {% endif %}
+                                        {% else %}
+                                            {# No execution or no saved data - show Test it #}
+                                            <a class="btn btn-sm" 
+                                               style="background: #0052A5; color: white; border: none;"
+                                               href="{% url 'testcase_test_it' test.id %}?next={{ request.get_full_path|urlencode }}{% if selected_version %}&version={{ selected_version }}{% endif %}">
+                                                <i class="bi bi-play-circle me-1"></i>Test it
+                                            </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- PAGINATION -->
+                {% if page_obj %}
+                <div class="pagination-wrapper">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?sheet={{ selected_sheet }}&sw={{ selected_sw }}&version={{ selected_version }}&feature={{ selected_feature }}&q={{ search_query }}&page={{ page_obj.previous_page_number }}">
+                                    <i class="bi bi-chevron-left"></i> Previous
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if num == page_obj.number %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                                {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?sheet={{ selected_sheet }}&sw={{ selected_sw }}&version={{ selected_version }}&feature={{ selected_feature }}&q={{ search_query }}&page={{ num }}">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?sheet={{ selected_sheet }}&sw={{ selected_sw }}&version={{ selected_version }}&feature={{ selected_feature }}&q={{ search_query }}&page={{ page_obj.next_page_number }}">
+                                    Next <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    <div class="text-center mt-2">
+                        <small class="text-muted">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} 
+                            ({{ page_obj.paginator.count }} total items)
+                        </small>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Feature & Version Selection Modal (FIXED) -->
+<div class="modal fade" id="exportModal"
+     tabindex="-1"
+     aria-labelledby="exportModalLabel"
+     aria-hidden="true"
+     data-bs-backdrop="static"
+     data-bs-keyboard="false">
+
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content border-0 shadow-lg">
+
+      <!-- Header -->
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="exportModalLabel">
+          <i class="bi bi-list-check me-2"></i>
+          Select Features and Versions for Export
+        </h5>
+        <button type="button"
+                class="btn-close btn-close-white"
+                data-bs-dismiss="modal"
+                aria-label="Close"></button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body">
+
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          <strong>Feature-Based Export:</strong>
+          Select completed features and versions.
+        </div>
+
+        <!-- Validation Message -->
+        <div id="exportValidationMessage"
+             class="alert alert-warning d-none mb-3">
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          Please select at least one Feature and one Version.
+        </div>
+
+        <form id="versionSelectionForm">
+
+          <div class="row">
+
+            <!-- Feature Selection -->
+            <div class="col-md-6">
+              <h6 class="fw-bold mb-3">
+                <i class="bi bi-grid-3x3-gap me-2"></i>
+                Feature Selection
+              </h6>
+
+              <div id="featuresContainer"
+                   style="max-height:400px; overflow-y:auto;
+                          border:1px solid #dee2e6;
+                          border-radius:0.375rem;
+                          padding:1rem;">
+                <div class="text-center text-muted py-4">
+                  <i class="bi bi-hourglass-split"></i>
+                  Loading features...
+                </div>
+              </div>
+            </div>
+
+            <!-- Version Selection -->
+            <div class="col-md-6">
+              <h6 class="fw-bold mb-3">
+                <i class="bi bi-diagram-3 me-2"></i>
+                Version Selection
+              </h6>
+
+              <div id="versionsContainer"
+                   style="max-height:400px; overflow-y:auto;
+                          border:1px solid #dee2e6;
+                          border-radius:0.375rem;
+                          padding:1rem;">
+                <div class="text-center text-muted py-4">
+                  <i class="bi bi-hourglass-split"></i>
+                  Loading versions...
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Export Type -->
+          <div class="mt-4">
+            <label class="form-label fw-bold">
+              Export Format
+            </label>
+
+            <div class="form-check mb-2">
+              <input class="form-check-input"
+                     type="radio"
+                     name="export_type"
+                     value="excel"
+                     checked>
+              <label class="form-check-label">
+                <i class="bi bi-file-earmark-spreadsheet me-2"></i>
+                Excel Report (.xlsx)
+              </label>
+            </div>
+
+            <div class="form-check">
+              <input class="form-check-input"
+                     type="radio"
+                     name="export_type"
+                     value="html">
+              <label class="form-check-label">
+                <i class="bi bi-file-earmark-code me-2"></i>
+                HTML Report
+              </label>
+            </div>
+          </div>
+
+        </form>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <button type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal">
+          Cancel
+        </button>
+
+        <button type="button"
+                class="btn btn-success"
+                id="versionExportSubmitBtn">
+          <i class="bi bi-download me-1"></i>
+          Export
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Post-Export Reset Modal -->
+<div class="modal fade" id="postExportModal" tabindex="-1" aria-labelledby="postExportModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="postExportModalLabel">
+          <i class="bi bi-check-circle me-2"></i>Export Completed Successfully
+        </h5>
+      </div>
+      <div class="modal-body">
+        <p class="mb-4">
+          <i class="bi bi-info-circle me-2 text-primary"></i>
+          <strong>All test cases have been exported.</strong> How would you like to proceed?
+        </p>
+        
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="card h-100 border-primary">
+              <div class="card-body text-center">
+                <i class="bi bi-arrow-repeat display-4 text-primary mb-3"></i>
+                <h5 class="card-title">Reset Same Data</h5>
+                <p class="card-text text-muted small">
+                  Keep the same test cases and data. Only reset status, reports, and comments for the next execution cycle.
+                </p>
+                <button type="button" class="btn btn-primary w-100" onclick="handleResetSameData()">
+                  <i class="bi bi-arrow-repeat me-1"></i>Reset & Continue
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-6">
+            <div class="card h-100 border-warning">
+              <div class="card-body text-center">
+                <i class="bi bi-file-earmark-plus display-4 text-warning mb-3"></i>
+                <h5 class="card-title">Add New Data</h5>
+                <p class="card-text text-muted small">
+                  Upload a new Excel sheet with updated test cases. This will clear all versions and create a new version.
+                </p>
+                <button type="button" class="btn btn-warning w-100" onclick="handleAddNewData()">
+                  <i class="bi bi-upload me-1"></i>Upload New Excel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-4 p-3 bg-light rounded">
+          <p class="mb-0 small text-muted">
+            <i class="bi bi-shield-check me-1"></i>
+            <strong>Note:</strong> Previous exported reports will remain unchanged and accessible. This action only affects the current execution data.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="handleCancelReset()">
+          <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.HIGHLIGHT_ID = "{{ highlight_id|default:'' }}";
+  window.EXPORT_EXCEL_URL = "{% url 'export_excel' %}";
+  window.EXPORT_HTML_URL = "{% url 'export_html' %}";
+  window.GET_EXPORTABLE_VERSIONS_URL = "{% url 'get_exportable_versions_api' %}";
+  window.TESTCASE_LIST_URL = "{% url 'testcase_list' %}";
+  window.RESET_URL = "{% url 'reset_execution_data' %}";
+  window.UPLOAD_EXCEL_URL = "{% url 'upload_excel' %}";
+  window.TOGGLE_TESTED_URL = "{% url 'toggle_tested_status' %}";
+  
+  function toggleTestedStatus(testCaseId, checked) {
+    fetch(window.TOGGLE_TESTED_URL, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        test_case_id: testCaseId,
+        tested: checked
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (!data.ok) {
+        alert('Error: ' + (data.error || 'Failed to update tested status'));
+        // Revert checkbox
+        const checkbox = document.querySelector(`[data-test-id="${testCaseId}"]`);
+        if (checkbox) checkbox.checked = !checked;
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('An error occurred while updating tested status.');
+      // Revert checkbox
+      const checkbox = document.querySelector(`[data-test-id="${testCaseId}"]`);
+      if (checkbox) checkbox.checked = !checked;
+    });
+  }
+  
+  // Check if export was completed and show modal (only once)
+  window.EXPORT_COMPLETED = "{{ export_completed|yesno:'true,false' }}" === "true";
+  
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.EXPORT_COMPLETED) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const exportKey = urlParams.get('export_completed');
+      
+      if (exportKey) {
+        // Only show if not already shown (check localStorage)
+        const modalShown = localStorage.getItem('exportModalShown_' + exportKey);
+        if (!modalShown) {
+          const modal = new bootstrap.Modal(document.getElementById('postExportModal'));
+          modal.show();
+          
+          // Mark as shown in localStorage with the export key (timestamp)
+          localStorage.setItem('exportModalShown_' + exportKey, 'true');
+          
+          // Clear the flag from URL immediately after showing
+          urlParams.delete('export_completed');
+          const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+          window.history.replaceState({}, '', newUrl);
+          
+          // Clear localStorage after 1 hour (optional cleanup)
+          setTimeout(() => {
+            localStorage.removeItem('exportModalShown_' + exportKey);
+          }, 3600000); // 1 hour
+        } else {
+          // Already shown, just remove from URL
+          urlParams.delete('export_completed');
+          const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+          window.history.replaceState({}, '', newUrl);
+        }
+      }
+    }
+  });
+
+  
+  function handleResetSameData() {
+    // Reset status, reports, comments for all test cases
+    fetch(window.RESET_URL, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'reset_same_data'
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Clear the export modal flag from localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        const exportKey = urlParams.get('export_completed');
+        if (exportKey) {
+          localStorage.removeItem('exportModalShown_' + exportKey);
+        }
+        
+        bootstrap.Modal.getInstance(document.getElementById('postExportModal')).hide();
+        // Remove export_completed from URL and reload
+        urlParams.delete('export_completed');
+        const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+        window.history.replaceState({}, '', newUrl);
+        window.location.reload();
+      } else {
+        alert('Error: ' + (data.error || 'Failed to reset data'));
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('An error occurred while resetting data.');
+    });
+  }
+  
+  // Export Modal Functions for #exportModal
+  let exportableVersionsData = null;
+  let currentExportType = 'excel'; // Store export type (excel/html)
+  
+  // Function to show export modal with export type
+  function showExportModal(exportType) {
+    currentExportType = exportType || 'excel';
+    const modal = document.getElementById('exportModal');
+    if (modal) {
+      modal.setAttribute('data-export-type', currentExportType);
+    }
+    
+    // Load exportable features and versions from API
+    fetch(window.GET_EXPORTABLE_VERSIONS_URL)
+      .then(response => {
+        if (!response.ok) {
+          // Handle HTTP errors (403, 500, etc.)
+          return response.text().then(text => {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}. ${text.substring(0, 200)}`);
+          });
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (!data || !data.ok) {
+          alert('Error loading exportable data: ' + (data?.error || 'Unknown error'));
+          return;
+        }
+        
+        exportableVersionsData = data;
+        
+        // Populate Feature + Version Combinations (Checkbox-based)
+        const container = document.getElementById('featureVersionSelection');
+        if (container) {
+          container.innerHTML = '';
+          
+          if (data.features && data.features.length > 0) {
+            let hasAnyCompleted = false;
+            
+            data.features.forEach(feature => {
+              // Create feature header
+              const featureHeader = document.createElement('div');
+              featureHeader.className = 'mb-3 mt-4';
+              featureHeader.style.borderBottom = '2px solid #dee2e6';
+              featureHeader.style.paddingBottom = '0.5rem';
+              
+              const featureTitle = document.createElement('h6');
+              featureTitle.className = 'fw-bold mb-2';
+              featureTitle.textContent = feature.name;
+              featureHeader.appendChild(featureTitle);
+              container.appendChild(featureHeader);
+              
+              // Create checkboxes for each version of this feature
+              if (feature.versions && feature.versions.length > 0) {
+                feature.versions.forEach(versionInfo => {
+                  const versionDiv = document.createElement('div');
+                  versionDiv.className = 'form-check mb-2 ms-3';
+                  
+                  const checkbox = document.createElement('input');
+                  checkbox.type = 'checkbox';
+                  checkbox.className = 'form-check-input feature-version-checkbox';
+                  checkbox.name = `feature_version_${feature.name.replace(/\s+/g, '_')}_${versionInfo.version_id}`;
+                  checkbox.id = `fv_${feature.name.replace(/\s+/g, '_')}_${versionInfo.version_id}`;
+                  checkbox.value = `${feature.name}::${versionInfo.version_id}`;
+                  checkbox.checked = false;
+                  checkbox.setAttribute('data-feature-name', feature.name);
+                  checkbox.setAttribute('data-version-id', versionInfo.version_id);
+                  checkbox.setAttribute('data-sw-part-number', versionInfo.sw_part_number);
+                  checkbox.setAttribute('data-app-sw-version', versionInfo.version);
+                  
+                  // Enable only if completed and not already exported
+                  if (versionInfo.completed && !versionInfo.is_exported) {
+                    checkbox.disabled = false;
+                    hasAnyCompleted = true;
+                  } else {
+                    checkbox.disabled = true;
+                    if (versionInfo.is_exported) {
+                      checkbox.title = 'Already exported';
+                    } else {
+                      checkbox.title = `Not completed (${versionInfo.executed}/${versionInfo.total} executed)`;
+                    }
+                  }
+                  
+                  checkbox.addEventListener('change', function() {
+                    validateExportModalSelection();
+                  });
+                  
+                  const label = document.createElement('label');
+                  label.className = 'form-check-label';
+                  label.htmlFor = checkbox.id;
+                  
+                  let labelText = `${versionInfo.sw_part_number} - ${versionInfo.version}`;
+                  if (versionInfo.completed && !versionInfo.is_exported) {
+                    labelText += ` (${versionInfo.executed}/${versionInfo.total} completed) ✅`;
+                    label.style.color = '#198754';
+                  } else if (versionInfo.is_exported) {
+                    labelText += ` (Already Exported)`;
+                    label.style.color = '#6c757d';
+                    label.style.textDecoration = 'line-through';
+                  } else {
+                    labelText += ` (${versionInfo.executed}/${versionInfo.total} executed) ⚠️ Not Completed`;
+                    label.style.color = '#6c757d';
+                  }
+                  
+                  label.textContent = labelText;
+                  label.title = checkbox.title;
+                  
+                  versionDiv.appendChild(checkbox);
+                  versionDiv.appendChild(label);
+                  container.appendChild(versionDiv);
+                });
+              }
+            });
+            
+            // Export always allowed - no need to disable button
+          } else {
+            container.innerHTML = '<div class="alert alert-warning text-center"><i class="bi bi-exclamation-triangle me-2"></i>No features available.</div>';
+          }
+        }
+        
+        validateExportModalSelection();
+        hideExportValidation();
+        
+        // Show modal
+        const bootstrapModal = new bootstrap.Modal(document.getElementById('exportModal'));
+        bootstrapModal.show();
+      })
+      .catch(error => {
+        console.error('Error loading exportable data:', error);
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          url: window.GET_EXPORTABLE_VERSIONS_URL
+        });
+        let errorMessage = 'An error occurred while loading exportable data.';
+        if (error.message) {
+          errorMessage += '\n\nError: ' + error.message;
+        }
+        errorMessage += '\n\nPlease check the browser console (F12) for more details.';
+        alert(errorMessage);
+      });
+  }
+  
+  function updateExportModalVersionStates() {
+    // Get selected features from #exportModal
+    const selectedFeatures = Array.from(document.querySelectorAll('#exportModal .feature-checkbox:checked'))
+      .map(cb => cb.value);
+    
+    // Update version checkboxes - disable if already exported for selected features
+    const versionCheckboxes = document.querySelectorAll('#exportModal .version-checkbox');
+    versionCheckboxes.forEach(cb => {
+      const featureExportStatus = JSON.parse(cb.getAttribute('data-feature-export-status') || '{}');
+      const versionId = cb.getAttribute('data-version-id');
+      const label = cb.nextElementSibling;
+      
+      // If no features selected, enable all versions
+      if (selectedFeatures.length === 0) {
+        cb.disabled = false;
+        cb.title = '';
+        if (label) {
+          // Remove "(Already Exported)" text if present
+          label.textContent = label.textContent.replace(' (Already Exported)', '');
+          label.style.color = '';
+        }
+      } else {
+        // Check if any selected feature is already exported for this version
+        const isExported = selectedFeatures.some(featureName => featureExportStatus[featureName] === true);
+        if (isExported) {
+          cb.disabled = true;
+          cb.title = 'Already exported for one or more selected features';
+          cb.checked = false; // Uncheck if disabled
+          if (label) {
+            // Add "(Already Exported)" text if not already present
+            let labelText = label.textContent.replace(' (Already Exported)', '');
+            if (!labelText.includes('(Already Exported)')) {
+              labelText += ' (Already Exported)';
+            }
+            label.textContent = labelText;
+            label.style.color = '#6c757d';
+          }
+        } else {
+          cb.disabled = false;
+          cb.title = '';
+          if (label) {
+            // Remove "(Already Exported)" text if present
+            label.textContent = label.textContent.replace(' (Already Exported)', '');
+            label.style.color = '';
+          }
+        }
+      }
+    });
+  }
+  
+  function validateExportModalSelection() {
+    // Export always allowed - no validation needed
+    const exportBtn = document.getElementById('versionExportSubmitBtn');
+    const validationDiv = document.getElementById('exportValidationMessage');
+    
+    if (exportBtn) {
+      exportBtn.disabled = false; // Always enabled
+    }
+    
+    // Hide validation message - no validation needed
+    if (validationDiv) {
+      validationDiv.classList.add('d-none');
+    }
+  }
+  
+  // Helper function to hide validation message in export modal
+  function hideExportValidation() {
+    const validationDiv = document.getElementById('exportValidationMessage');
+    if (validationDiv) {
+      validationDiv.classList.add('d-none');
+    }
+  }
+  
+  // Version Selection Modal Functions (keeping for backward compatibility)
+  function showVersionSelectionModal() {
+    // Load exportable features and versions from API
+    fetch(window.GET_EXPORTABLE_VERSIONS_URL)
+      .then(response => response.json())
+      .then(data => {
+        if (!data.ok) {
+          alert('Error loading exportable data: ' + (data.error || 'Unknown error'));
+          return;
+        }
+        
+        exportableVersionsData = data;
+        
+        // Populate Features
+        const featuresContainer = document.getElementById('featuresContainer');
+        featuresContainer.innerHTML = '';
+        
+        if (data.features && data.features.length > 0) {
+          const hasCompletedFeature = data.features.some(f => f.is_completed);
+          
+          // Export always allowed - show all features regardless of completion
+          {
+            data.features.forEach(feature => {
+              const featureDiv = document.createElement('div');
+              featureDiv.className = 'form-check mb-2';
+              
+              const checkbox = document.createElement('input');
+              checkbox.type = 'checkbox';
+              checkbox.className = 'form-check-input feature-checkbox';
+              checkbox.name = `feature_${feature.feature_name.replace(/\s+/g, '_')}`;
+              checkbox.id = `feature_${feature.feature_name.replace(/\s+/g, '_')}`;
+              checkbox.value = feature.feature_name;
+              checkbox.checked = false;
+              
+                // All features are selectable - no completion check
+                checkbox.title = `Feature available for export`;
+              
+              checkbox.addEventListener('change', function() {
+                updateVersionStates();
+                validateExportSelection();
+              });
+              
+              const label = document.createElement('label');
+              label.className = 'form-check-label';
+              label.htmlFor = checkbox.id;
+              
+              let labelText = feature.feature_name;
+              if (feature.is_completed) {
+                labelText += ` (✓ Completed in ${feature.completed_versions.length} version(s))`;
+              } else {
+                labelText += ` (✗ Not completed)`;
+                label.style.color = '#6c757d';
+                label.style.textDecoration = 'line-through';
+              }
+              
+              label.textContent = labelText;
+              label.title = checkbox.title;
+              
+              featureDiv.appendChild(checkbox);
+              featureDiv.appendChild(label);
+              featuresContainer.appendChild(featureDiv);
+            });
+          }
+        } else {
+          featuresContainer.innerHTML = '<div class="alert alert-warning text-center"><i class="bi bi-exclamation-triangle me-2"></i>No features available.</div>';
+        }
+        
+        // Populate Versions
+        const versionsContainer = document.getElementById('versionsContainer');
+        versionsContainer.innerHTML = '';
+        
+        if (data.versions && data.versions.length > 0) {
+          data.versions.forEach(version => {
+            const versionDiv = document.createElement('div');
+            versionDiv.className = 'form-check mb-2';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'form-check-input version-checkbox';
+            checkbox.name = `version_${version.version_id}`;
+            checkbox.id = `version_${version.version_id}`;
+            checkbox.value = version.version_id;
+            checkbox.checked = false;
+            checkbox.setAttribute('data-version-id', version.version_id);
+            checkbox.setAttribute('data-sw-part-number', version.sw_part_number);
+            checkbox.setAttribute('data-app-sw-version', version.app_sw_version);
+            checkbox.setAttribute('data-feature-export-status', JSON.stringify(version.feature_export_status));
+            
+            checkbox.addEventListener('change', function() {
+              validateExportSelection();
+            });
+            
+            const label = document.createElement('label');
+            label.className = 'form-check-label';
+            label.htmlFor = checkbox.id;
+            label.textContent = `${version.sw_part_number} - ${version.app_sw_version}`;
+            
+            versionDiv.appendChild(checkbox);
+            versionDiv.appendChild(label);
+            versionsContainer.appendChild(versionDiv);
+          });
+        } else {
+          versionsContainer.innerHTML = '<div class="alert alert-warning text-center"><i class="bi bi-exclamation-triangle me-2"></i>No versions available.</div>';
+        }
+        
+        // Update version states based on selected features
+        updateVersionStates();
+        validateExportSelection();
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('versionSelectionModal'));
+        modal.show();
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while loading exportable data.');
+      });
+  }
+  
+  function updateVersionStates() {
+    // Get selected features
+    const selectedFeatures = Array.from(document.querySelectorAll('.feature-checkbox:checked'))
+      .map(cb => cb.value);
+    
+    // Update version checkboxes - disable if already exported for selected features
+    const versionCheckboxes = document.querySelectorAll('.version-checkbox');
+    versionCheckboxes.forEach(cb => {
+      const featureExportStatus = JSON.parse(cb.getAttribute('data-feature-export-status') || '{}');
+      const versionId = cb.getAttribute('data-version-id');
+      
+      // If no features selected, enable all versions (but check for any exported)
+      if (selectedFeatures.length === 0) {
+        // Check if any feature is exported for this version
+        const hasExportedFeature = Object.values(featureExportStatus).some(status => status === true);
+        if (hasExportedFeature) {
+          cb.disabled = false;
+          cb.title = 'Some features already exported for this version';
+        } else {
+          cb.disabled = false;
+          cb.title = '';
+        }
+      } else {
+        // Check if any selected feature is already exported for this version
+        // All versions are selectable - no export status check
+        cb.disabled = false;
+        cb.title = '';
+      }
+    });
+  }
+  
+  function validateExportSelection() {
+    // Check if at least one feature and one version are selected
+    const selectedFeatures = document.querySelectorAll('.feature-checkbox:checked:not(:disabled)');
+    const selectedVersions = document.querySelectorAll('.version-checkbox:checked:not(:disabled)');
+    
+    const exportBtn = document.getElementById('versionExportSubmitBtn');
+    if (exportBtn) {
+      exportBtn.disabled = !(selectedFeatures.length > 0 && selectedVersions.length > 0);
+    }
+  }
+  
+  function handleAddNewData() {
+    // Clear the export modal flag from localStorage
+    const urlParams = new URLSearchParams(window.location.search);
+    const exportKey = urlParams.get('export_completed');
+    if (exportKey) {
+      localStorage.removeItem('exportModalShown_' + exportKey);
+    }
+    
+    // Redirect to upload Excel page
+    window.location.href = window.UPLOAD_EXCEL_URL + '?reset_versions=1';
+  }
+  
+  function handleCancelReset() {
+    // Clear the export modal flag from localStorage
+    const urlParams = new URLSearchParams(window.location.search);
+    const exportKey = urlParams.get('export_completed');
+    if (exportKey) {
+      localStorage.removeItem('exportModalShown_' + exportKey);
+    }
+    
+    bootstrap.Modal.getInstance(document.getElementById('postExportModal')).hide();
+    // Remove the flag from URL
+    urlParams.delete('export_completed');
+    const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+    window.history.replaceState({}, '', newUrl);
+  }
+  
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  
+  
+  // Export button handler is in list.js - no duplicate handler needed here
+  
+  // Check if export button should be disabled on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    const exportButton = document.getElementById('exportButton');
+    if (exportButton) {
+      // Check availability on page load - need at least one completed feature
+      fetch(window.GET_EXPORTABLE_VERSIONS_URL)
+        .then(response => response.json())
+        .then(data => {
+          if (!data.ok) {
+            exportButton.disabled = true;
+            exportButton.title = 'Error loading exportable data';
+            return;
+          }
+          
+          // Check if there's at least one completed feature+version combination
+          let hasCompleted = false;
+          if (data.features && data.features.length > 0) {
+            for (const feature of data.features) {
+              if (feature.versions && feature.versions.length > 0) {
+                for (const version of feature.versions) {
+                  if (version.completed && !version.is_exported) {
+                    hasCompleted = true;
+                    break;
+                  }
+                }
+                if (hasCompleted) break;
+              }
+            }
+          }
+          if (!hasCompleted) {
+            exportButton.disabled = true;
+            exportButton.title = 'No completed feature+version combinations available for export';
+          } else {
+            exportButton.disabled = false;
+            exportButton.title = '';
+          }
+        })
+        .catch(error => {
+          console.error('Error checking exportable data:', error);
+        });
+    }
+  });
+  
+  // Handle sheet change - reset sw and version parameters
+  function handleSheetChange(selectElement) {
+    const form = selectElement.closest('form');
+    const sheetValue = selectElement.value;
+    const url = new URL(window.location.href);
+    url.searchParams.set('sheet', sheetValue);
+    url.searchParams.set('sw', '');
+    url.searchParams.set('version', '');
+    // Keep feature and q if they exist
+    const feature = url.searchParams.get('feature') || '';
+    const q = url.searchParams.get('q') || '';
+    url.searchParams.set('feature', feature);
+    url.searchParams.set('q', q);
+    window.location.href = url.toString();
+  }
+</script>
+<script src="{% static 'testmanager/js/list.js' %}"></script>
+<script src="{% static 'testmanager/js/list_state.js' %}"></script>
+
+{% endblock %}

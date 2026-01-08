@@ -1,0 +1,175 @@
+{% extends "testmanager/base.html" %}
+{% load static %}
+
+{% block title %}Create Test Cases – New Version{% endblock %}
+
+{% block content %}
+
+<div class="container mt-4" style="max-width: 800px;">
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+
+      <h4 class="mb-3 text-center">Create new Test Instance for SW Part Numbers</h4>
+
+      <!-- FORM -->
+      <form id="createForm">
+
+        {% csrf_token %}
+
+        <!-- SW PART NUMBER (CHECKBOXES) -->
+        <div class="mb-3">
+          <label class="form-label">
+            SW Part Number(s) <span class="text-danger">*</span>
+          </label>
+          <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+            <div class="mb-2">
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="selectAllBtn">Select All</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllBtn">Deselect All</button>
+            </div>
+            {% for sw in sw_list %}
+              <div class="form-check">
+                <input
+                  class="form-check-input sw-checkbox"
+                  type="checkbox"
+                  name="sw_part_number"
+                  value="{{ sw }}"
+                  id="sw_{{ forloop.counter }}"
+                  {% if sw_part_number == sw %}checked{% endif %}
+                >
+                <label class="form-check-label" for="sw_{{ forloop.counter }}">
+                  {{ sw }}
+                </label>
+              </div>
+            {% endfor %}
+          </div>
+          <small class="text-muted">Select one or more SW Part Numbers to create test cases for</small>
+        </div>
+
+        <!-- APP SW VERSION -->
+        <div class="mb-3">
+          <label class="form-label">
+            Application SW Version <span class="text-danger">*</span>
+          </label>
+          <input
+            type="text"
+            class="form-control"
+            name="app_sw_version"
+            id="appSwVersion"
+            value="{{ selected_version }}"
+            placeholder="e.g. V2.1.0"
+            required
+          >
+          {% if selected_version %}
+          <small class="text-muted">Pre-filled from selected version</small>
+          {% endif %}
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary w-100">
+            Create Test Cases
+          </button>
+          <a href="{% url 'testcase_list' %}" class="btn btn-secondary w-100">
+            Cancel
+          </a>
+        </div>
+
+      </form>
+
+      <!-- RESULT -->
+      <div id="resultBox" class="mt-3" style="display:none;"></div>
+
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Select All / Deselect All functionality
+document.getElementById("selectAllBtn").addEventListener("click", function() {
+  document.querySelectorAll(".sw-checkbox").forEach(cb => cb.checked = true);
+});
+
+document.getElementById("deselectAllBtn").addEventListener("click", function() {
+  document.querySelectorAll(".sw-checkbox").forEach(cb => cb.checked = false);
+});
+
+document.getElementById("createForm").addEventListener("submit", function (e) {
+  e.preventDefault();
+
+  const form = e.target;
+  const resultBox = document.getElementById("resultBox");
+
+  resultBox.style.display = "none";
+  resultBox.innerHTML = "";
+
+  // Get all checked SW part numbers
+  const checkedSw = Array.from(document.querySelectorAll(".sw-checkbox:checked")).map(cb => cb.value);
+  
+  if (checkedSw.length === 0) {
+    resultBox.style.display = "block";
+    resultBox.className = "alert alert-danger";
+    resultBox.innerText = "Please select at least one SW Part Number.";
+    return;
+  }
+
+  const formData = new FormData(form);
+  const version = formData.get("app_sw_version");
+  
+  if (!version) {
+    resultBox.style.display = "block";
+    resultBox.className = "alert alert-danger";
+    resultBox.innerText = "Please enter an Application SW Version.";
+    return;
+  }
+
+  // Add all selected SW part numbers to form data
+  formData.delete("sw_part_number"); // Remove any existing
+  checkedSw.forEach(sw => {
+    formData.append("sw_part_number", sw);
+  });
+
+  fetch("{% url 'create_new_version' %}", {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": formData.get("csrfmiddlewaretoken")
+    },
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    resultBox.style.display = "block";
+
+    if (data.ok) {
+      resultBox.className = "alert alert-success";
+      const swList = Array.isArray(data.sw) ? data.sw.join(", ") : data.sw;
+      resultBox.innerHTML =
+        "Successfully created <strong>" + data.created +
+        "</strong> test cases for " + data.count + " SW Part Number(s).<br>" +
+        "<small>SW Part Numbers: " + swList + "</small><br>" +
+        "<small>Version: " + data.version + "</small><br>" +
+        "Redirecting...";
+      
+      // Redirect to list page with the first SW and version selected
+      setTimeout(() => {
+        const firstSw = Array.isArray(data.sw) ? data.sw[0] : data.sw;
+        const version = data.version || formData.get("app_sw_version");
+        window.location.href = "{% url 'testcase_list' %}?sw=" + encodeURIComponent(firstSw) + "&version=" + encodeURIComponent(version);
+      }, 2000);
+    } else {
+      resultBox.className = "alert alert-danger";
+      resultBox.innerText = data.error || "Failed to create test cases.";
+    }
+  })
+  .catch(() => {
+    resultBox.style.display = "block";
+    resultBox.className = "alert alert-danger";
+    resultBox.innerText = "Server error. Please try again.";
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,466 @@
+{% extends "testmanager/base.html" %}
+{% load static %}
+
+{% block title %}Create New Test Instance{% endblock %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 900px;">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h4 class="mb-3 text-center">Create New Test Instance</h4>
+            <p class="text-muted text-center mb-4">Select a completed feature scope to create a new test instance.</p>
+            
+            <form id="versionForm">
+                {% csrf_token %}
+                
+                <!-- INLINE SELECTION: Dependent Dropdowns with Completion Status -->
+                
+                <!-- Sheet Selection -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Sheet <span class="text-danger">*</span>
+                    </label>
+                    <select name="sheet" id="sheetSelect" class="form-select" required onchange="updateSWList()">
+                        <option value="">-- Select Sheet --</option>
+                        {% for sheet in sheets_list %}
+                            <option value="{{ sheet }}" {% if selected_sheet == sheet %}selected{% endif %}>{{ sheet }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- SW Part Number Selection (depends on Sheet) -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-tag me-1"></i>SW Part Number <span class="text-danger">*</span>
+                    </label>
+                    <select name="sw" id="swSelect" class="form-select" required disabled onchange="updateVersionList()">
+                        <option value="">-- Select Sheet First --</option>
+                    </select>
+                </div>
+                
+                <!-- Version Selection (depends on SW Part Number) -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-version me-1"></i>Application SW Version <span class="text-danger">*</span>
+                    </label>
+                    <select name="version" id="versionSelect" class="form-select" required disabled onchange="updateFeatureList()">
+                        <option value="">-- Select SW Part Number First --</option>
+                    </select>
+                </div>
+                
+                <!-- Feature Selection (depends on Sheet + SW + Version, shows completion status) -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-grid-3x3-gap me-1"></i>Features <span class="text-danger">*</span>
+                    </label>
+                    <div id="featureCheckboxes" class="border rounded p-3" style="max-height: 300px; overflow-y: auto; background-color: #f8f9fa;">
+                        <small class="text-muted">Select Version First</small>
+                    </div>
+                    <div class="mt-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllFeatures" style="display: none;" onclick="selectAllFeatures()">
+                            <i class="bi bi-check-all me-1"></i>Select All
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllFeatures" style="display: none;" onclick="deselectAllFeatures()">
+                            <i class="bi bi-x-square me-1"></i>Deselect All
+                        </button>
+                    </div>
+                    <small id="completionStatus" class="form-text text-muted mt-1"></small>
+                </div>
+                
+                <!-- New Version Input -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-plus-circle me-1"></i>New Version Number <span class="text-danger">*</span>
+                    </label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        name="new_version"
+                        id="newVersion"
+                        placeholder="e.g. V2.1.0"
+                        required
+                        disabled
+                    >
+                    <small class="form-text text-muted">Enter the version number for the new test instance.</small>
+                </div>
+                
+                <!-- Current Version Display (read-only) -->
+                <div class="alert alert-info" id="currentVersionInfo" style="display: none;">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Current Version:</strong> <span id="currentVersionText"></span>
+                </div>
+                
+                <div class="alert alert-warning" id="completionWarning" style="display: none;">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <span id="completionWarningText"></span>
+                </div>
+                
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary w-100" id="submitBtn" disabled>
+                        <i class="bi bi-check-circle me-1"></i>Create New Test Instance
+                    </button>
+                    <a href="{% url 'testcase_list' %}" class="btn btn-secondary w-100">
+                        <i class="bi bi-x-circle me-1"></i>Cancel
+                    </a>
+                </div>
+            </form>
+            
+            <div id="resultBox" class="mt-3" style="display:none;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- JSON data from Django (no template variables in JavaScript) -->
+<script type="application/json" id="features-data">{{ features_data|safe }}</script>
+<script type="application/json" id="selected-sheet">{{ selected_sheet|safe }}</script>
+<script type="application/json" id="selected-sw">{{ selected_sw|safe }}</script>
+<script type="application/json" id="selected-version">{{ selected_version|safe }}</script>
+<script type="application/json" id="selected-feature">{{ selected_feature|safe }}</script>
+<script type="application/json" id="urls">{{ urls_json|safe }}</script>
+
+<script>
+// Feature data from backend (parsed JSON)
+const featuresData = JSON.parse(document.getElementById('features-data').textContent);
+
+// Pre-selected values from backend (already JSON-encoded by backend)
+const preSelectedSheet = JSON.parse(document.getElementById('selected-sheet').textContent);
+const preSelectedSW = JSON.parse(document.getElementById('selected-sw').textContent);
+const preSelectedVersion = JSON.parse(document.getElementById('selected-version').textContent);
+const preSelectedFeature = JSON.parse(document.getElementById('selected-feature').textContent);
+
+// URLs from Django (no template variables in JavaScript)
+const urls = JSON.parse(document.getElementById('urls').textContent);
+
+// Populate dropdowns based on selections
+function updateSWList() {
+    const sheetSelect = document.getElementById('sheetSelect');
+    const swSelect = document.getElementById('swSelect');
+    const versionSelect = document.getElementById('versionSelect');
+    const featureSelect = document.getElementById('featureSelect');
+    const newVersionInput = document.getElementById('newVersion');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    const selectedSheet = sheetSelect.value;
+    
+    // Reset dependent dropdowns
+    swSelect.innerHTML = '<option value="">-- Select Sheet First --</option>';
+    swSelect.disabled = !selectedSheet;
+    versionSelect.innerHTML = '<option value="">-- Select SW Part Number First --</option>';
+    versionSelect.disabled = true;
+    featureSelect.innerHTML = '<option value="">-- Select Version First --</option>';
+    featureSelect.disabled = true;
+    newVersionInput.disabled = true;
+    submitBtn.disabled = true;
+    
+    if (!selectedSheet) return;
+    
+    // Get unique SW part numbers for this sheet
+    const swSet = new Set();
+    featuresData.forEach(f => {
+        if (f.sheet_name === selectedSheet) {
+            swSet.add(f.sw_part_number);
+        }
+    });
+    
+    const swList = Array.from(swSet).sort();
+    swList.forEach(sw => {
+        const option = document.createElement('option');
+        option.value = sw;
+        option.textContent = sw;
+        if (preSelectedSW && sw === preSelectedSW) {
+            option.selected = true;
+        }
+        swSelect.appendChild(option);
+    });
+    
+    if (swList.length > 0) {
+        swSelect.disabled = false;
+        updateVersionList();
+    }
+}
+
+function updateVersionList() {
+    const sheetSelect = document.getElementById('sheetSelect');
+    const swSelect = document.getElementById('swSelect');
+    const versionSelect = document.getElementById('versionSelect');
+    const featureSelect = document.getElementById('featureSelect');
+    const newVersionInput = document.getElementById('newVersion');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    const selectedSheet = sheetSelect.value;
+    const selectedSW = swSelect.value;
+    
+    // Reset dependent dropdowns
+    versionSelect.innerHTML = '<option value="">-- Select SW Part Number First --</option>';
+    versionSelect.disabled = !selectedSW;
+    featureSelect.innerHTML = '<option value="">-- Select Version First --</option>';
+    featureSelect.disabled = true;
+    newVersionInput.disabled = true;
+    submitBtn.disabled = true;
+    
+    if (!selectedSheet || !selectedSW) return;
+    
+    // Get unique versions for this sheet + SW
+    const versionSet = new Set();
+    featuresData.forEach(f => {
+        if (f.sheet_name === selectedSheet && f.sw_part_number === selectedSW) {
+            versionSet.add(f.app_sw_version);
+        }
+    });
+    
+    const versionList = Array.from(versionSet).sort();
+    versionList.forEach(ver => {
+        const option = document.createElement('option');
+        option.value = ver;
+        option.textContent = ver;
+        if (preSelectedVersion && ver === preSelectedVersion) {
+            option.selected = true;
+        }
+        versionSelect.appendChild(option);
+    });
+    
+    if (versionList.length > 0) {
+        versionSelect.disabled = false;
+        updateFeatureList();
+    }
+}
+
+function updateFeatureList() {
+    const sheetSelect = document.getElementById('sheetSelect');
+    const swSelect = document.getElementById('swSelect');
+    const versionSelect = document.getElementById('versionSelect');
+    const featureCheckboxes = document.getElementById('featureCheckboxes');
+    const selectAllBtn = document.getElementById('selectAllFeatures');
+    const deselectAllBtn = document.getElementById('deselectAllFeatures');
+    const newVersionInput = document.getElementById('newVersion');
+    const submitBtn = document.getElementById('submitBtn');
+    const currentVersionInfo = document.getElementById('currentVersionInfo');
+    const currentVersionText = document.getElementById('currentVersionText');
+    
+    const selectedSheet = sheetSelect.value;
+    const selectedSW = swSelect.value;
+    const selectedVersion = versionSelect.value;
+    
+    // Reset
+    featureCheckboxes.innerHTML = '<small class="text-muted">Select Version First</small>';
+    selectAllBtn.style.display = 'none';
+    deselectAllBtn.style.display = 'none';
+    newVersionInput.disabled = true;
+    submitBtn.disabled = true;
+    currentVersionInfo.style.display = 'none';
+    
+    if (!selectedSheet || !selectedSW || !selectedVersion) return;
+    
+    // Show current version
+    currentVersionText.textContent = selectedVersion;
+    currentVersionInfo.style.display = 'block';
+    
+    // Get features for this sheet + SW + version
+    const features = featuresData.filter(f => 
+        f.sheet_name === selectedSheet &&
+        f.sw_part_number === selectedSW &&
+        f.app_sw_version === selectedVersion
+    );
+    
+    if (features.length === 0) {
+        featureCheckboxes.innerHTML = '<small class="text-muted">No features found for this selection.</small>';
+        return;
+    }
+    
+    // Clear and populate checkboxes
+    featureCheckboxes.innerHTML = '';
+    
+    features.forEach(f => {
+        const checkboxDiv = document.createElement('div');
+        checkboxDiv.className = 'form-check mb-2';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'form-check-input feature-checkbox';
+        checkbox.id = `feature_${f.feature_name.replace(/\s+/g, '_')}`;
+        checkbox.value = f.feature_name;
+        checkbox.dataset.completed = f.is_completed;
+        checkbox.dataset.total = f.total_count;
+        checkbox.dataset.completedCount = f.completed_count;
+        checkbox.addEventListener('change', updateCompletionStatus);
+        
+        // Pre-select if it was previously selected
+        if (preSelectedFeature && f.feature_name === preSelectedFeature) {
+            checkbox.checked = true;
+        }
+        
+        // Disable if not completed
+        if (!f.is_completed) {
+            checkbox.disabled = true;
+        }
+        
+        const label = document.createElement('label');
+        label.className = 'form-check-label';
+        label.htmlFor = checkbox.id;
+        
+        let labelText = `${f.feature_name} (${f.completed_count}/${f.total_count} completed)`;
+        if (!f.is_completed) {
+            labelText += ' ⚠️ Not Completed';
+            label.className += ' text-muted';
+        } else {
+            label.className += ' text-success';
+        }
+        label.textContent = labelText;
+        
+        checkboxDiv.appendChild(checkbox);
+        checkboxDiv.appendChild(label);
+        featureCheckboxes.appendChild(checkboxDiv);
+    });
+    
+    // Show select/deselect all buttons if there are features
+    if (features.length > 0) {
+        selectAllBtn.style.display = 'inline-block';
+        deselectAllBtn.style.display = 'inline-block';
+        updateCompletionStatus();
+    }
+}
+
+function updateCompletionStatus() {
+    const featureCheckboxes = document.querySelectorAll('.feature-checkbox:checked');
+    const allFeatureCheckboxes = document.querySelectorAll('.feature-checkbox');
+    const completionStatus = document.getElementById('completionStatus');
+    const completionWarning = document.getElementById('completionWarning');
+    const completionWarningText = document.getElementById('completionWarningText');
+    const newVersionInput = document.getElementById('newVersion');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    if (featureCheckboxes.length === 0) {
+        completionStatus.textContent = 'Please select at least one feature.';
+        completionStatus.className = 'form-text text-muted mt-1';
+        completionWarning.style.display = 'none';
+        newVersionInput.disabled = true;
+        submitBtn.disabled = true;
+        return;
+    }
+    
+    // Check all selected features
+    let allCompleted = true;
+    let incompleteFeatures = [];
+    let totalSelected = featureCheckboxes.length;
+    
+    featureCheckboxes.forEach(checkbox => {
+        const isCompleted = checkbox.dataset.completed === 'True';
+        if (!isCompleted) {
+            allCompleted = false;
+            incompleteFeatures.push(checkbox.value);
+        }
+    });
+    
+    if (allCompleted) {
+        completionStatus.innerHTML = `<i class="bi bi-check-circle text-success me-1"></i>All selected features are completed (${totalSelected} feature${totalSelected > 1 ? 's' : ''} selected)`;
+        completionStatus.className = 'form-text text-success mt-1';
+        completionWarning.style.display = 'none';
+        newVersionInput.disabled = false;
+        submitBtn.disabled = false;
+    } else {
+        completionStatus.innerHTML = `<i class="bi bi-x-circle text-danger me-1"></i>Some selected features are not completed (${incompleteFeatures.length} incomplete)`;
+        completionStatus.className = 'form-text text-danger mt-1';
+        completionWarningText.textContent = `The following features are not fully completed: ${incompleteFeatures.join(', ')}. All tests must be executed (PASS/FAIL) and version must be locked before creating a new instance.`;
+        completionWarning.style.display = 'block';
+        newVersionInput.disabled = true;
+        submitBtn.disabled = true;
+    }
+}
+
+function selectAllFeatures() {
+    const checkboxes = document.querySelectorAll('.feature-checkbox:not(:disabled)');
+    checkboxes.forEach(cb => cb.checked = true);
+    updateCompletionStatus();
+}
+
+function deselectAllFeatures() {
+    const checkboxes = document.querySelectorAll('.feature-checkbox');
+    checkboxes.forEach(cb => cb.checked = false);
+    updateCompletionStatus();
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    if (preSelectedSheet) {
+        updateSWList();
+    }
+});
+
+// Form submission
+document.getElementById("versionForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const resultBox = document.getElementById("resultBox");
+    const submitBtn = document.getElementById("submitBtn");
+    
+    resultBox.style.display = "none";
+    resultBox.innerHTML = "";
+    
+    // Collect form data
+    const formData = new FormData(form);
+    const selectedFeatures = Array.from(document.querySelectorAll('.feature-checkbox:checked')).map(cb => cb.value);
+    
+    const data = {
+        'sheet': formData.get('sheet'),
+        'sw': formData.get('sw'),
+        'version': formData.get('version'),
+        'features': selectedFeatures,  // Array of selected features
+        'new_version': formData.get('new_version'),
+    };
+    
+    // Validate
+    if (!data.sheet || !data.sw || !data.version || !data.features || data.features.length === 0 || !data.new_version) {
+        resultBox.style.display = "block";
+        resultBox.className = "alert alert-danger";
+        resultBox.innerHTML = "Please fill in all required fields and select at least one feature.";
+        return;
+    }
+    
+    // Disable submit button
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Creating...';
+    
+    // Send AJAX request
+    fetch(urls.create_new_test_instance, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            resultBox.style.display = "block";
+            resultBox.className = "alert alert-success";
+            resultBox.innerHTML = data.message || "New test instance created successfully!";
+            
+            // Redirect after 2 seconds
+            setTimeout(() => {
+                if (data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                } else {
+                    window.location.href = urls.testcase_list;
+                }
+            }, 2000);
+        } else {
+            resultBox.style.display = "block";
+            resultBox.className = "alert alert-danger";
+            resultBox.innerHTML = data.error || "An error occurred while creating the new test instance.";
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Create New Test Instance';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        resultBox.style.display = "block";
+        resultBox.className = "alert alert-danger";
+        resultBox.innerHTML = "An error occurred while creating the new test instance.";
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Create New Test Instance';
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,175 @@
+{% extends 'testmanager/base.html' %}
+{% block title %}View Test Execution{% endblock %}
+{% load static %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'testmanager/css/view_test.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid pt-3">
+    <div class="row justify-content-center">
+        <div class="col-lg-11 col-xl-10">
+            <div class="view-card card">
+                <div class="card-header-custom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="mb-1">
+                                <i class="bi bi-eye me-2"></i>View Test Execution
+                            </h3>
+                            <p class="mb-0 opacity-90">Complete test case and execution details</p>
+                        </div>
+                       
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <!-- Test Case Information -->
+                    <div class="info-section">
+                        <h5 class="mb-3 text-primary">
+                            <i class="bi bi-info-circle me-2"></i>Test Case Information
+                        </h5>
+                        <div class="row g-3">
+                            <div class="col-md-2">
+                                <div class="info-label">SL.NO</div>
+                                <div class="info-value">{{ test.sl_no|default:"-" }}</div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="info-label">Sheet Name</div>
+                                <div class="info-value">{{ test.sheet_name|default:"-" }}</div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="info-label">SW Part Number</div>
+                                <div class="info-value">{{ test.sw_part_number|default:"-" }}</div>
+                            </div>
+                            <div class="col-md-2">
+                            </div>
+                            <div class="col-md-2">
+                                <div class="info-label">Feature</div>
+                                <div class="info-value">{{ test.feature|default:"-" }}</div>
+                            </div>
+                             <div class="col-md-2">
+                                 <div class="info-label">Test Case ID</div>
+                                 <div class="info-value"><code>{{ display_test_case_id|default:test.test_case_id|default:"-" }}</code></div>
+                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Requirement Information -->
+                    <div class="info-section">
+                        <h5 class="mb-3 text-primary">
+                            <i class="bi bi-file-text me-2"></i>Requirement Details
+                        </h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="info-label">Requirement ID</div>
+                                <div class="info-value">{{ display_requirement_id|default:test.requirement_id|default:"-" }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-label">Requirement Description</div>
+                                <div class="info-value">{{ test.requirement_description|default:"-" }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Test Case Details -->
+                    <div class="info-section">
+                        <h5 class="mb-3 text-primary">
+                            <i class="bi bi-list-check me-2"></i>Test Case Details
+                        </h5>
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <div class="info-label">Test Case Summary</div>
+                                <div class="info-value">{{ test.test_case_summary|default:"-" }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-label">Pre Conditions</div>
+                                <div class="info-value" style="min-height: 80px;">{{ test.pre_conditions|default:"-" }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-label">Inputs</div>
+                                <div class="info-value" style="min-height: 80px;">{{ test.inputs|default:"-" }}</div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="info-label">Periodic Time</div>
+                                <div class="info-value">{{ test.periodic_time|default:"-" }}</div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="info-label">Test Steps</div>
+                                <div class="info-value" style="min-height: 100px;">{{ test.test_steps|default:"-"|linebreaks }}</div>
+                            </div>
+                            <div class="col-md-12">
+                                <div class="info-label">Expected Result</div>
+                                <div class="info-value" style="min-height: 80px;">{{ test.expected_result|default:"-" }}</div>
+                            </div>
+                            
+                    <!-- Execution Information -->
+                    {% if execution %}
+                    <div class="info-section">
+                        <h5 class="mb-3 text-success">
+                            <i class="bi bi-clipboard-check me-2"></i>Execution Details
+                        </h5>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <div class="info-label">Execution Status</div>
+                                <div class="info-value">
+                                    {% if execution.status %}
+                                        <span class="badge bg-{% if execution.status == 'PASS' %}success{% elif execution.status == 'FAIL' %}danger{% else %}warning{% endif %} badge-custom">
+                                            {{ execution.status }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <div class="info-label">Executed By</div>
+                                <div class="info-value">{{ execution.user.get_full_name|default:execution.user.username|default:"-" }}</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="info-label">Executed At</div>
+                                <div class="info-value">{{ execution.executed_at|date:"Y-m-d H:i:s"|default:"-" }}</div>
+                            </div>
+                            <div class="col-md-9">
+                                <div class="info-label">Reports</div>
+                                <div class="info-value" style="min-height: 60px;">{{ execution.reports|default:"-" }}</div>
+                            </div>
+                            {% if execution.comments %}
+                            <div class="col-md-12">
+                                <div class="info-label">Comments</div>
+                                <div class="info-value" style="min-height: 80px;">{{ execution.comments|linebreaks }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="info-section">
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>No execution data available for this test case.
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                        <a href="{% if next %}{{ next }}{% else %}{% url 'testcase_list' %}{% endif %}" 
+                           class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>Back to List
+                        </a>
+                        {% if not execution or not execution.status %}
+                        <a href="{% url 'testcase_test_it' test.id %}{% if app_sw_version %}?version={{ app_sw_version }}{% endif %}{% if next %}&next={{ next|urlencode }}{% endif %}" 
+                           class="btn btn-success">
+                            <i class="bi bi-play-circle me-1"></i>Test It
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+

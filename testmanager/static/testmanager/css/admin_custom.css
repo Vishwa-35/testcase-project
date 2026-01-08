@@ -1,0 +1,1142 @@
+/* ============================================================================
+   PROFESSIONAL DJANGO ADMIN UI - ENTERPRISE GRADE
+   ============================================================================
+   Color Palette:
+   - Primary: #1F2937 (dark slate / charcoal)
+   - Secondary: #2563EB (professional blue)
+   - Accent: #10B981 (success/active)
+   - Background: #F9FAFB (light gray)
+   - Text: #111827 (near black)
+   ============================================================================ */
+
+/* ============================================================================
+   GLOBAL RESET & BASE STYLES
+   ============================================================================ */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Inter', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    font-weight: 400;
+    color: #111827;
+    background: #F9FAFB;
+    line-height: 1.6;
+}
+
+/* ============================================================================
+   SIDEBAR NAVIGATION
+   ============================================================================ */
+.admin-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 260px;
+    height: 100vh;
+    background: #1F2937;
+    color: #fff;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+}
+
+.admin-sidebar-header {
+    padding: 24px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: #111827;
+}
+
+.admin-sidebar-header h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.admin-sidebar-header .logo-icon {
+    font-size: 24px;
+    color: #2563EB;
+}
+
+.admin-sidebar-nav {
+    padding: 16px 0;
+}
+
+.admin-sidebar-nav-group {
+    margin-bottom: 8px;
+}
+
+.admin-sidebar-nav-group-title {
+    padding: 8px 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #9CA3AF;
+}
+
+.admin-sidebar-nav-item {
+    display: block;
+    padding: 12px 20px;
+    color: #D1D5DB;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.admin-sidebar-nav-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    border-left-color: #2563EB;
+}
+
+.admin-sidebar-nav-item.active {
+    background: rgba(37, 99, 235, 0.15);
+    color: #2563EB;
+    border-left-color: #2563EB;
+    font-weight: 600;
+}
+
+.admin-sidebar-nav-item .nav-icon {
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
+}
+
+/* ============================================================================
+   MAIN CONTENT AREA
+   ============================================================================ */
+.admin-main-wrapper {
+    margin-left: 260px;
+    min-height: 100vh;
+    background: #F9FAFB;
+}
+
+.admin-main-content {
+    padding: 24px 32px;
+    max-width: 1600px;
+}
+
+/* ============================================================================
+   PAGE HEADER & BREADCRUMBS
+   ============================================================================ */
+.admin-page-header {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #E5E7EB;
+}
+
+.admin-page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1F2937;
+    margin: 0 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.admin-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #6B7280;
+    margin-top: 8px;
+}
+
+.admin-breadcrumb a {
+    color: #2563EB;
+    text-decoration: none;
+}
+
+.admin-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.admin-breadcrumb-separator {
+    color: #9CA3AF;
+}
+
+/* ============================================================================
+   CARDS & CONTAINERS
+   ============================================================================ */
+.admin-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+    margin-bottom: 24px;
+    overflow: hidden;
+    border: 1px solid #E5E7EB;
+}
+
+.admin-card-header {
+    background: linear-gradient(135deg, #1F2937 0%, #374151 100%);
+    color: #fff;
+    padding: 20px 24px;
+    font-weight: 600;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-card-header.blue {
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+}
+
+.admin-card-header.green {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+}
+
+.admin-card-body {
+    padding: 24px;
+}
+
+/* ============================================================================
+   TABLES
+   ============================================================================ */
+.admin-table-wrapper {
+    overflow-x: auto;
+    border-radius: 8px;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    font-size: 14px;
+}
+
+.admin-table thead {
+    background: #F9FAFB;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.admin-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 2px solid #E5E7EB;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.admin-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #F3F4F6;
+    color: #111827;
+}
+
+.admin-table tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+.admin-table tbody tr:nth-child(even) {
+    background: #F9FAFB;
+}
+
+.admin-table tbody tr:hover {
+    background: #F3F4F6;
+    cursor: pointer;
+}
+
+.admin-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ============================================================================
+   BADGES & STATUS INDICATORS
+   ============================================================================ */
+.admin-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.admin-badge.success {
+    background: #D1FAE5;
+    color: #065F46;
+}
+
+.admin-badge.danger {
+    background: #FEE2E2;
+    color: #991B1B;
+}
+
+.admin-badge.warning {
+    background: #FEF3C7;
+    color: #92400E;
+}
+
+.admin-badge.info {
+    background: #DBEAFE;
+    color: #1E40AF;
+}
+
+.admin-badge.secondary {
+    background: #F3F4F6;
+    color: #374151;
+}
+
+.admin-badge.locked {
+    background: #1F2937;
+    color: #fff;
+}
+
+.admin-badge.active {
+    background: #D1FAE5;
+    color: #065F46;
+}
+
+/* ============================================================================
+   BUTTONS
+   ============================================================================ */
+.admin-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    line-height: 1.5;
+}
+
+.admin-btn-primary {
+    background: #2563EB;
+    color: #fff;
+}
+
+.admin-btn-primary:hover {
+    background: #1D4ED8;
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+}
+
+.admin-btn-secondary {
+    background: #fff;
+    color: #374151;
+    border: 1px solid #D1D5DB;
+}
+
+.admin-btn-secondary:hover {
+    background: #F9FAFB;
+    border-color: #9CA3AF;
+}
+
+.admin-btn-danger {
+    background: #fff;
+    color: #DC2626;
+    border: 1px solid #DC2626;
+}
+
+.admin-btn-danger:hover {
+    background: #DC2626;
+    color: #fff;
+}
+
+.admin-btn:disabled,
+.admin-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* ============================================================================
+   FORMS & INPUTS
+   ============================================================================ */
+.admin-form-group {
+    margin-bottom: 20px;
+}
+
+.admin-form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #374151;
+    font-size: 14px;
+}
+
+.admin-form-input,
+.admin-form-select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #D1D5DB;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #111827;
+    background: #fff;
+    transition: all 0.2s ease;
+}
+
+.admin-form-input:focus,
+.admin-form-select:focus {
+    outline: none;
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.admin-form-input:disabled,
+.admin-form-select:disabled {
+    background: #F9FAFB;
+    color: #6B7280;
+    cursor: not-allowed;
+}
+
+/* ============================================================================
+   FILTER TOOLBAR
+   ============================================================================ */
+.admin-filter-toolbar {
+    background: #fff;
+    padding: 16px 24px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    border: 1px solid #E5E7EB;
+}
+
+.admin-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-filter-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6B7280;
+    white-space: nowrap;
+}
+
+/* ============================================================================
+   HIERARCHY NAVIGATION
+   ============================================================================ */
+.admin-hierarchy {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: #F9FAFB;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.admin-hierarchy-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #374151;
+    font-weight: 500;
+}
+
+.admin-hierarchy-item a {
+    color: #2563EB;
+    text-decoration: none;
+}
+
+.admin-hierarchy-item a:hover {
+    text-decoration: underline;
+}
+
+.admin-hierarchy-separator {
+    color: #9CA3AF;
+    font-size: 12px;
+}
+
+/* ============================================================================
+   STATUS BANNERS
+   ============================================================================ */
+.admin-banner {
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 500;
+}
+
+.admin-banner.info {
+    background: #DBEAFE;
+    color: #1E40AF;
+    border-left: 4px solid #2563EB;
+}
+
+.admin-banner.success {
+    background: #D1FAE5;
+    color: #065F46;
+    border-left: 4px solid #10B981;
+}
+
+.admin-banner.warning {
+    background: #FEF3C7;
+    color: #92400E;
+    border-left: 4px solid #F59E0B;
+}
+
+.admin-banner.danger {
+    background: #FEE2E2;
+    color: #991B1B;
+    border-left: 4px solid #DC2626;
+}
+
+/* ============================================================================
+   DJANGO ADMIN INTEGRATION
+   ============================================================================ */
+/* Override Django admin default styles */
+#content {
+    margin-left: 0;
+    padding: 0;
+}
+
+/* Hide default Django admin header on index page */
+body.index #header {
+    display: none;
+}
+
+/* Style Django admin header when visible */
+#header {
+    background: #1F2937;
+    border-bottom: 1px solid #374151;
+}
+
+#header #branding h1 {
+    color: #fff;
+    font-weight: 700;
+}
+
+#header #user-tools {
+    color: #D1D5DB;
+}
+
+#header #user-tools a {
+    color: #2563EB;
+}
+
+#header #user-tools a:hover {
+    color: #60A5FA;
+}
+
+/* Style Django admin breadcrumbs */
+.breadcrumbs {
+    background: #F9FAFB;
+    border-bottom: 1px solid #E5E7EB;
+    padding: 12px 24px;
+    font-size: 13px;
+}
+
+.breadcrumbs a {
+    color: #2563EB;
+}
+
+.breadcrumbs a:hover {
+    text-decoration: underline;
+}
+
+/* Style Django admin change list */
+#changelist {
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #E5E7EB;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+#changelist-filter {
+    background: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+#changelist-filter h2 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 12px;
+}
+
+#changelist-filter h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6B7280;
+    margin-top: 16px;
+    margin-bottom: 8px;
+}
+
+#changelist-filter ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#changelist-filter li {
+    margin-bottom: 4px;
+}
+
+#changelist-filter a {
+    color: #374151;
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: block;
+    transition: background 0.2s ease;
+}
+
+#changelist-filter a:hover {
+    background: #F3F4F6;
+}
+
+#changelist-filter .selected a {
+    background: #2563EB;
+    color: #fff;
+    font-weight: 600;
+}
+
+/* Style Django admin results table */
+#result_list {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#result_list thead th {
+    background: #F9FAFB;
+    font-weight: 600;
+    color: #374151;
+    padding: 12px;
+    border-bottom: 2px solid #E5E7EB;
+}
+
+#result_list tbody td {
+    padding: 12px;
+    border-bottom: 1px solid #F3F4F6;
+}
+
+#result_list tbody tr:hover {
+    background: #F9FAFB;
+}
+
+/* Style Django admin actions */
+.actions {
+    background: #F9FAFB;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    border: 1px solid #E5E7EB;
+}
+
+.actions select {
+    padding: 8px 12px;
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.actions button {
+    background: #2563EB;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-left: 8px;
+}
+
+.actions button:hover {
+    background: #1D4ED8;
+}
+
+/* Style Django admin pagination */
+.paginator {
+    background: #F9FAFB;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-top: 16px;
+    border: 1px solid #E5E7EB;
+}
+
+.paginator a {
+    color: #2563EB;
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin: 0 2px;
+}
+
+.paginator a:hover {
+    background: #F3F4F6;
+}
+
+.paginator .this-page {
+    background: #2563EB;
+    color: #fff;
+    font-weight: 600;
+}
+
+/* Style Django admin forms */
+.form-row {
+    margin-bottom: 20px;
+}
+
+.form-row label {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.form-row input[type="text"],
+.form-row input[type="email"],
+.form-row input[type="password"],
+.form-row input[type="number"],
+.form-row select,
+.form-row textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #D1D5DB;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #111827;
+    background: #fff;
+}
+
+.form-row input:focus,
+.form-row select:focus,
+.form-row textarea:focus {
+    outline: none;
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.help {
+    font-size: 13px;
+    color: #6B7280;
+    margin-top: 4px;
+}
+
+/* Style Django admin submit row */
+.submit-row {
+    background: #F9FAFB;
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin-top: 24px;
+    border: 1px solid #E5E7EB;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.submit-row input[type="submit"],
+.submit-row .default {
+    background: #2563EB;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.submit-row input[type="submit"]:hover,
+.submit-row .default:hover {
+    background: #1D4ED8;
+}
+
+.submit-row .deletelink {
+    background: #DC2626;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.submit-row .deletelink:hover {
+    background: #B91C1C;
+    color: #fff;
+}
+
+/* Style Django admin inline forms */
+.inline-group {
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.inline-group h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1F2937;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #E5E7EB;
+}
+
+/* Style Django admin messages */
+.messagelist {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 20px 0;
+}
+
+.messagelist li {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.messagelist .success {
+    background: #D1FAE5;
+    color: #065F46;
+    border-left: 4px solid #10B981;
+}
+
+.messagelist .error {
+    background: #FEE2E2;
+    color: #991B1B;
+    border-left: 4px solid #DC2626;
+}
+
+.messagelist .warning {
+    background: #FEF3C7;
+    color: #92400E;
+    border-left: 4px solid #F59E0B;
+}
+
+.messagelist .info {
+    background: #DBEAFE;
+    color: #1E40AF;
+    border-left: 4px solid #2563EB;
+}
+
+.module {
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #E5E7EB;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.module table {
+    width: 100%;
+}
+
+.module caption {
+    background: #F9FAFB;
+    padding: 12px 16px;
+    font-weight: 600;
+    color: #1F2937;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+.module caption a {
+    color: #2563EB;
+    text-decoration: none;
+}
+
+.module caption a:hover {
+    text-decoration: underline;
+}
+
+.module th,
+.module td {
+    padding: 12px 16px;
+}
+
+.module th {
+    font-weight: 600;
+    color: #374151;
+}
+
+.module th a {
+    color: #2563EB;
+    text-decoration: none;
+}
+
+.module th a:hover {
+    text-decoration: underline;
+}
+
+.addlink,
+.changelink,
+.viewlink {
+    color: #2563EB;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+}
+
+.addlink:hover,
+.changelink:hover,
+.viewlink:hover {
+    background: #F3F4F6;
+    text-decoration: none;
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================ */
+@media (max-width: 1024px) {
+    .admin-sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+
+    .admin-sidebar.open {
+        transform: translateX(0);
+    }
+
+    .admin-main-wrapper {
+        margin-left: 0;
+    }
+
+    .admin-main-content {
+        padding: 16px;
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-page-title {
+        font-size: 24px;
+    }
+
+    .admin-card-body {
+        padding: 16px;
+    }
+
+    .admin-table {
+        font-size: 13px;
+    }
+
+    .admin-table th,
+    .admin-table td {
+        padding: 10px 12px;
+    }
+
+    .admin-filter-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+/* ============================================================================
+   READ-ONLY MODE VISUAL INDICATORS
+   ============================================================================ */
+.admin-readonly-mode {
+    background: #FEF3C7;
+    border-left: 4px solid #F59E0B;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.admin-readonly-mode.locked {
+    background: #FEE2E2;
+    border-left-color: #DC2626;
+}
+
+.admin-readonly-mode.historical {
+    background: #DBEAFE;
+    border-left-color: #2563EB;
+}
+
+.admin-readonly-mode.readonly {
+    background: #DBEAFE;
+    border-left-color: #2563EB;
+}
+
+.admin-readonly-mode h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #92400E;
+}
+
+.admin-readonly-mode.locked h3 {
+    color: #991B1B;
+}
+
+.admin-readonly-mode.historical h3,
+.admin-readonly-mode.readonly h3 {
+    color: #1E40AF;
+}
+
+.admin-readonly-mode p {
+    margin: 0;
+    font-size: 14px;
+    color: #78350F;
+}
+
+.admin-readonly-mode.locked p {
+    color: #7F1D1D;
+}
+
+.admin-readonly-mode.historical p,
+.admin-readonly-mode.readonly p {
+    color: #1E3A8A;
+}
+
+/* Disable form inputs in read-only mode */
+.admin-readonly-mode ~ form input:not([type="hidden"]):disabled,
+.admin-readonly-mode ~ form select:disabled,
+.admin-readonly-mode ~ form textarea:disabled {
+    background-color: #F9FAFB !important;
+    cursor: not-allowed !important;
+    opacity: 0.7;
+}
+
+/* Version context banner */
+.version-context-banner {
+    background: linear-gradient(135deg, #1F2937 0%, #374151 100%);
+    color: #fff;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.version-context-banner h2 {
+    margin: 0 0 12px 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.version-context-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.version-context-item {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.version-context-item label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #D1D5DB;
+    margin-bottom: 4px;
+}
+
+.version-context-item .value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.version-context-item .badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+.version-context-item .badge.active {
+    background: #10B981;
+    color: #fff;
+}
+
+.version-context-item .badge.locked {
+    background: #DC2626;
+    color: #fff;
+}
+
+.version-context-item .badge.inactive {
+    background: #6B7280;
+    color: #fff;
+}
+
+/* Critical field indicators */
+.form-row label:has(+ input#id_sw_part_number),
+.form-row label:has(+ input#id_app_sw_version) {
+    color: #DC2626;
+    font-weight: 600;
+}
+
+.form-row label:has(+ input#id_sw_part_number)::before,
+.form-row label:has(+ input#id_app_sw_version)::before {
+    content: "⚠️ ";
+    margin-right: 4px;
+}
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+.text-center {
+    text-align: center;
+}
+
+.text-muted {
+    color: #6B7280;
+}
+
+.mt-0 { margin-top: 0; }
+.mt-1 { margin-top: 8px; }
+.mt-2 { margin-top: 16px; }
+.mt-3 { margin-top: 24px; }
+.mt-4 { margin-top: 32px; }
+
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: 8px; }
+.mb-2 { margin-bottom: 16px; }
+.mb-3 { margin-bottom: 24px; }
+.mb-4 { margin-bottom: 32px; }
+
+.p-0 { padding: 0; }
+.p-1 { padding: 8px; }
+.p-2 { padding: 16px; }
+.p-3 { padding: 24px; }
+.p-4 { padding: 32px; }
+
+/* ============================================================================
+   CHECKBOXES (from existing admin_custom.css)
+   ============================================================================ */
+.admin input[type="checkbox"],
+.admin .form-check-input {
+    width: 20px !important;
+    height: 20px !important;
+    cursor: pointer;
+}

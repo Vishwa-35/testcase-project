@@ -1,0 +1,33 @@
+/* Custom CSS for Django Admin - Version-wise grouping and larger checkboxes */
+
+/* Increase checkbox size in Django Admin */
+.admin input[type="checkbox"],
+.admin .form-check-input {
+    width: 20px !important;
+    height: 20px !important;
+    cursor: pointer;
+}
+
+/* Version grouping styling */
+.admin .field-app_sw_version {
+    font-weight: bold;
+    color: #0052A5;
+}
+
+/* Version filter styling */
+.admin .filter-app_sw_version {
+    font-weight: 500;
+}
+
+/* Snapshot export link styling */
+.admin .export-link {
+    color: #0052A5;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.admin .export-link:hover {
+    color: #046CFF;
+    text-decoration: underline;
+}
+

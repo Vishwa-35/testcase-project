@@ -1,0 +1,71 @@
+{% extends 'testmanager/base.html' %}
+{% load static %}
+{% block title %}Admin - User Management{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'testmanager/css/admin_page.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1 fw-bold text-white">
+                <i class="bi bi-shield-lock me-2"></i>User Management
+            </h2>
+            <p class="text-white-50 mb-0">Manage system users and their profiles</p>
+        </div>
+        <a href="{% url 'create_user' %}" class="btn btn-create-user">
+            <i class="bi bi-person-plus me-1"></i>Create New User
+        </a>
+    </div>
+
+    <div class="admin-card card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 user-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Full Name</th>
+                            <th>Employee ID</th>
+                            <th>Role</th>
+                            <th>Email</th>
+                            <th>Superuser</th>
+                            <th>Date Joined</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td><strong>{{ user.username }}</strong></td>
+                            <td>{{ user.profile.full_name|default:"-" }}</td>
+                            <td>{{ user.profile.employee_id|default:"-" }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ user.profile.get_role_display|default:"-" }}</span>
+                            </td>
+                            <td>{{ user.email|default:"-" }}</td>
+                            <td>
+                                {% if user.is_superuser or user.profile.role == 'Manager' %}
+                                    <span class="badge bg-danger">Yes</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">No</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user.date_joined|date:"M d, Y" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox me-2"></i>No users found
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
