@@ -19,6 +19,7 @@ from .testcases import (
     view_test_execution,
     create_testcases,
     create_new_version,
+    get_next_sl_no_api,
 )
 
 # Excel import views
@@ -34,8 +35,12 @@ from .export_views import (
     export_excel,
     export_html,
     export_html_snapshot,
-    _create_snapshot_and_reset,
-    get_exportable_versions_api,
+    get_sheets_api,
+    get_versions_for_sheet_api,
+    get_features_for_selection_api,
+    get_completed_features_for_selection_api,
+    get_sw_part_numbers_for_sheet_api,
+    get_completed_features_for_sw_api,
 )
 
 # Admin and manager views
@@ -67,6 +72,7 @@ __all__ = [
     'view_test_execution',
     'create_testcases',
     'create_new_version',
+    'get_next_sl_no_api',
     # Import
     'upload_excel',
     'input_versions',
@@ -76,8 +82,12 @@ __all__ = [
     'export_excel',
     'export_html',
     'export_html_snapshot',
-    '_create_snapshot_and_reset',
-    'get_exportable_versions_api',
+    'get_sheets_api',
+    'get_versions_for_sheet_api',
+    'get_features_for_selection_api',
+    'get_completed_features_for_selection_api',
+    'get_sw_part_numbers_for_sheet_api',
+    'get_completed_features_for_sw_api',
     # Admin
     'admin_page',
     'create_user',

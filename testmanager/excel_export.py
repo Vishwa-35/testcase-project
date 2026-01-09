@@ -11,6 +11,7 @@ import openpyxl
 from openpyxl.styles import PatternFill, Font, Alignment
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import PieChart, BarChart, Reference
+from openpyxl.drawing.colors import Color
 from functools import reduce
 from operator import or_
 
@@ -43,15 +44,22 @@ CENTER_WRAP = Alignment(
     wrap_text=True
 )
 
-HEADER_FILL = PatternFill("solid", fgColor="0052CC")  # Blue
+HEADER_FILL = PatternFill("solid", fgColor="1f4e79")  # Dark Blue (#1f4e79)
 HEADER_FONT = Font(color="FFFFFF", bold=True)
 
 FEATURE_FILL = PatternFill("solid", fgColor="FFF3B0")  # Light Yellow
 
-STATUS_PASS_FILL = PatternFill("solid", fgColor="C6EFCE")  # Green
-STATUS_FAIL_FILL = PatternFill("solid", fgColor="FFC7CE")  # Red
+STATUS_PASS_FILL = PatternFill("solid", fgColor="C6EFCE")  # Light Green (#c6efce)
+STATUS_PASS_FONT = Font(color="006100", bold=False)  # Dark Green
+STATUS_FAIL_FILL = PatternFill("solid", fgColor="FFC7CE")  # Light Red (#ffc7ce)
+STATUS_FAIL_FONT = Font(color="9C0006", bold=False)  # Dark Red
 STATUS_NOT_RELEVANT_FILL = PatternFill("solid", fgColor="FFEB9C")  # Yellow
-STATUS_NOT_EXECUTED_FILL = PatternFill("solid", fgColor="D3D3D3")  # Gray
+STATUS_NOT_EXECUTED_FILL = PatternFill("solid", fgColor="FFEB9C")  # Light Yellow (#ffeb9c) - Changed from Gray
+STATUS_NOT_EXECUTED_FONT = Font(color="000000", bold=False)  # Black
+
+# Zebra striping colors
+ZEBRA_EVEN_FILL = PatternFill("solid", fgColor="F2F2F2")  # Light Gray (#f2f2f2)
+ZEBRA_ODD_FILL = PatternFill("solid", fgColor="FFFFFF")  # White
 
 SUMMARY_PASS_FILL = PatternFill("solid", fgColor="C6EFCE")  # Green
 SUMMARY_FAIL_FILL = PatternFill("solid", fgColor="FFC7CE")  # Red
@@ -322,6 +330,9 @@ def _write_history_sheet(wb):
 
 def _write_test_case_sheet(ws, qs, latest_versions, active_instance=None):
     """
+    Write test case data to Excel sheet.
+    Orders test cases by sw_part_number then sl_no (sl_no is scoped per sw_part_number).
+    
     Write test case data to worksheet with new layout:
     - Rows 1-6: Empty
     - Rows 8-9: Summary values (columns A-E)
@@ -329,8 +340,20 @@ def _write_test_case_sheet(ws, qs, latest_versions, active_instance=None):
     - Row 10: Header (Blue background, white text, filters enabled)
     - Row 11+: Data
     - Feature column: Light Yellow
-    - Status column: Color-coded (PASS=green, FAIL=red, NOT RELEVANT=yellow, NOT EXECUTED=gray)
     """
+    # CRITICAL: Order by sw_part_number then sl_no (sl_no is scoped per sw_part_number)
+    # Convert sl_no to integer for proper numeric ordering
+    from django.db.models import Case, When, IntegerField, Value
+    from django.db.models.functions import Cast
+    qs = qs.annotate(
+        sl_no_int=Case(
+            When(sl_no__isnull=True, then=Value(0)),
+            When(sl_no__exact="", then=Value(0)),
+            default=Cast('sl_no', IntegerField()),
+            output_field=IntegerField()
+        )
+    ).order_by('sw_part_number', 'sl_no_int')
+    
     if active_instance is None:
         active_instance = get_active_instance()
     
@@ -406,37 +429,87 @@ def _write_test_case_sheet(ws, qs, latest_versions, active_instance=None):
     chart_labels_row = 1
     chart_data_row = 2
     
-    ws.cell(row=chart_labels_row, column=chart_data_col_start).value = "Passed"
-    ws.cell(row=chart_labels_row, column=chart_data_col_start + 1).value = "Failed"
-    ws.cell(row=chart_labels_row, column=chart_data_col_start + 2).value = "Not Relevant"
+    # Pie chart data (for Status Distribution)
+    pie_labels_col = chart_data_col_start
+    pie_data_col = chart_data_col_start
+    ws.cell(row=chart_labels_row, column=pie_labels_col).value = "Passed"
+    ws.cell(row=chart_labels_row, column=pie_labels_col + 1).value = "Failed"
+    ws.cell(row=chart_labels_row, column=pie_labels_col + 2).value = "Not Executed"
     
-    ws.cell(row=chart_data_row, column=chart_data_col_start).value = pass_count
-    ws.cell(row=chart_data_row, column=chart_data_col_start + 1).value = fail_count
-    ws.cell(row=chart_data_row, column=chart_data_col_start + 2).value = not_relevant_count
+    ws.cell(row=chart_data_row, column=pie_data_col).value = pass_count
+    ws.cell(row=chart_data_row, column=pie_data_col + 1).value = fail_count
+    ws.cell(row=chart_data_row, column=pie_data_col + 2).value = not_executed_count
     
+    # Pie Chart: Fixed position F1:G9 (2 columns, 9 rows)
     pie = PieChart()
     pie.title = "Status Distribution"
-    pie.width = 6.5
-    pie.height = 11.0
-    pie_labels = Reference(ws, min_col=chart_data_col_start, min_row=chart_labels_row, max_row=chart_labels_row, max_col=chart_data_col_start + 2)
-    pie_data = Reference(ws, min_col=chart_data_col_start, min_row=chart_data_row, max_row=chart_data_row, max_col=chart_data_col_start + 2)
+    # Size to fit within F1:G9 (2 columns width, 9 rows height)
+    # openpyxl chart dimensions: width/height in Excel units (~1 unit ≈ 0.1 inches)
+    # For 2 columns (~1.34 inches) and 9 rows (~1.89 inches):
+    pie.width = 3.0  # Fits within 2 columns (F-G)
+    pie.height = 4.5  # Fits within 9 rows (1-9)
+    pie_labels = Reference(ws, min_col=pie_labels_col, min_row=chart_labels_row, max_row=chart_labels_row, max_col=pie_labels_col + 2)
+    pie_data = Reference(ws, min_col=pie_data_col, min_row=chart_data_row, max_row=chart_data_row, max_col=pie_data_col + 2)
     pie.add_data(pie_data, titles_from_data=False)
     pie.set_categories(pie_labels)
+    # Set pie chart colors: PASS=Green, FAIL=Red, NOT EXECUTED=Yellow
+    # Colors in ARGB format (without alpha, so RGB hex)
+    pie_colors = ['28B70B', 'FF0202', 'FDF90E']  # Green, Red, Yellow
+    for i, series in enumerate(pie.series):
+        if i < len(pie_colors):
+            series.graphicalProperties.solidFill = Color(rgb=pie_colors[i])
+    # Anchor at F1 - chart will fit within F1:G9
+    pie.anchor = "F1"
     ws.add_chart(pie, "F1")
     
+    # Bar chart data (for Test Summary: Total, Executed, Passed)
+    bar_labels_col = chart_data_col_start + 4  # Use different columns to avoid overwriting pie data
+    bar_data_col = chart_data_col_start + 4
+    ws.cell(row=chart_labels_row, column=bar_labels_col).value = "Total"
+    ws.cell(row=chart_labels_row, column=bar_labels_col + 1).value = "Executed"
+    ws.cell(row=chart_labels_row, column=bar_labels_col + 2).value = "Passed"
+    
+    ws.cell(row=chart_data_row, column=bar_data_col).value = total_test_cases
+    ws.cell(row=chart_data_row, column=bar_data_col + 1).value = executed_count
+    ws.cell(row=chart_data_row, column=bar_data_col + 2).value = pass_count
+    
+    # Bar Chart: Fixed position H1:K9 (4 columns, 9 rows)
     bar = BarChart()
     bar.title = "Test Summary"
     bar.type = "col"
     bar.style = 10
-    bar.width = 6.5
-    bar.height = 11.0
+    # Size to fit within H1:K9 (4 columns width, 9 rows height)
+    # For 4 columns (~2.68 inches) and 9 rows (~1.89 inches):
+    bar.width = 6.0  # Fits within 4 columns (H-K)
+    bar.height = 4.5  # Fits within 9 rows (1-9)
     bar.y_axis.title = "Count"
     bar.x_axis.title = "Category"
-    bar_labels = Reference(ws, min_col=chart_data_col_start, min_row=chart_labels_row, max_row=chart_labels_row, max_col=chart_data_col_start + 2)
-    bar_data = Reference(ws, min_col=chart_data_col_start, min_row=chart_data_row, max_row=chart_data_row, max_col=chart_data_col_start + 2)
+    bar_labels = Reference(ws, min_col=bar_labels_col, min_row=chart_labels_row, max_row=chart_labels_row, max_col=bar_labels_col + 2)
+    bar_data = Reference(ws, min_col=bar_data_col, min_row=chart_data_row, max_row=chart_data_row, max_col=bar_data_col + 2)
     bar.add_data(bar_data, titles_from_data=False)
     bar.set_categories(bar_labels)
+    # Set bar chart colors: Total=Blue, Executed=Orange, Passed=Green
+    bar_colors = ['0D6EFD', 'FF8C00', '28B70B']  # Blue, Orange, Green
+    for i, series in enumerate(bar.series):
+        if i < len(bar_colors):
+            series.graphicalProperties.solidFill = Color(rgb=bar_colors[i])
+    # Anchor at H1 - chart will fit within H1:K9
+    bar.anchor = "H1"
     ws.add_chart(bar, "H1")
+    
+    # Set column widths for chart areas to ensure proper sizing
+    # F-G for pie chart (2 columns)
+    ws.column_dimensions['F'].width = 15
+    ws.column_dimensions['G'].width = 15
+    # H-K for bar chart (4 columns)
+    ws.column_dimensions['H'].width = 12
+    ws.column_dimensions['I'].width = 12
+    ws.column_dimensions['J'].width = 12
+    ws.column_dimensions['K'].width = 12
+    
+    # Set row heights for rows 1-9 to ensure charts fit properly
+    for row_num in range(1, 10):
+        ws.row_dimensions[row_num].height = 20  # Fixed height for chart area rows
     
     header_row = 10
     
@@ -532,26 +605,36 @@ def _write_test_case_sheet(ws, qs, latest_versions, active_instance=None):
                 final_comments,
             ]
             
+            # Zebra striping: alternate row colors
+            is_even_row = (current_row - data_start_row) % 2 == 0
+            row_fill = ZEBRA_EVEN_FILL if is_even_row else ZEBRA_ODD_FILL
+            
             for col_idx, value in enumerate(row_data, start=1):
                 cell = ws.cell(row=current_row, column=col_idx)
                 cell.value = value
                 cell.alignment = CENTER_WRAP
                 
-                # Feature column (column 3) - Light Yellow background
+                # Apply zebra striping to all cells
+                cell.fill = row_fill
+                
+                # Feature column (column 3) - Light Yellow background (overrides zebra)
                 if col_idx == 3:
                     cell.fill = FEATURE_FILL
                 
-                # Status column (column 13) - Color based on status
+                # Status column (column 13) - Color based on status (overrides zebra)
                 if col_idx == 13:
                     status = (final_status or "").upper()
                     if status == "PASS":
-                        cell.fill = STATUS_PASS_FILL  # Green
+                        cell.fill = STATUS_PASS_FILL  # Light Green
+                        cell.font = STATUS_PASS_FONT  # Dark Green text
                     elif status == "FAIL":
-                        cell.fill = STATUS_FAIL_FILL  # Red
+                        cell.fill = STATUS_FAIL_FILL  # Light Red
+                        cell.font = STATUS_FAIL_FONT  # Dark Red text
                     elif status in ("NOT RELEVANT", "NOT_RELEVANT"):
                         cell.fill = STATUS_NOT_RELEVANT_FILL  # Yellow
                     else:
-                        cell.fill = STATUS_NOT_EXECUTED_FILL  # Gray
+                        cell.fill = STATUS_NOT_EXECUTED_FILL  # Light Yellow
+                        cell.font = STATUS_NOT_EXECUTED_FONT  # Black text
             
             current_row += 1
     

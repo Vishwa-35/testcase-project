@@ -335,9 +335,10 @@
                     </a>
                     {% endif %}
 
-                    {# EXPORT: Manager only #}
-                    {% if can_export_reports %}
-                    <button type="button" class="btn btn-header-secondary" id="exportButton" onclick="showExportModal('excel')">
+                    {# EXPORT: Manager only (superuser) #}
+                    {# TESTERS CANNOT export Excel or HTML #}
+                    {% if is_manager or user.is_superuser %}
+                    <button type="button" class="btn btn-header-secondary" id="exportButton" onclick="showExportModal()">
                         <i class="bi bi-download me-1"></i>Export
                     </button>
                     {% endif %}
@@ -528,7 +529,7 @@
         </div>
     </div>
 </div>
-<!-- Feature & Version Selection Modal (FIXED) -->
+<!-- NEW 3-STEP EXPORT MODAL -->
 <div class="modal fade" id="exportModal"
      tabindex="-1"
      aria-labelledby="exportModalLabel"
@@ -543,7 +544,7 @@
       <div class="modal-header bg-primary text-white">
         <h5 class="modal-title" id="exportModalLabel">
           <i class="bi bi-list-check me-2"></i>
-          Select Features and Versions for Export
+          Export Test Cases
         </h5>
         <button type="button"
                 class="btn-close btn-close-white"
@@ -553,116 +554,168 @@
 
       <!-- Body -->
       <div class="modal-body">
-
-        <div class="alert alert-info">
-          <i class="bi bi-info-circle me-2"></i>
-          <strong>Feature-Based Export:</strong>
-          Select completed features and versions.
-        </div>
-
-        <!-- Validation Message -->
-        <div id="exportValidationMessage"
-             class="alert alert-warning d-none mb-3">
-          <i class="bi bi-exclamation-triangle me-2"></i>
-          Please select at least one Feature and one Version.
-        </div>
-
-        <form id="versionSelectionForm">
-
-          <div class="row">
-
-            <!-- Feature Selection -->
-            <div class="col-md-6">
-              <h6 class="fw-bold mb-3">
-                <i class="bi bi-grid-3x3-gap me-2"></i>
-                Feature Selection
-              </h6>
-
-              <div id="featuresContainer"
-                   style="max-height:400px; overflow-y:auto;
-                          border:1px solid #dee2e6;
-                          border-radius:0.375rem;
-                          padding:1rem;">
-                <div class="text-center text-muted py-4">
-                  <i class="bi bi-hourglass-split"></i>
-                  Loading features...
-                </div>
-              </div>
+        <!-- Progress Steps -->
+        <div class="mb-4">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="step-item" id="step1Indicator">
+              <div class="step-number">1</div>
+              <div class="step-label">Select Sheet</div>
             </div>
-
-            <!-- Version Selection -->
-            <div class="col-md-6">
-              <h6 class="fw-bold mb-3">
-                <i class="bi bi-diagram-3 me-2"></i>
-                Version Selection
-              </h6>
-
-              <div id="versionsContainer"
-                   style="max-height:400px; overflow-y:auto;
-                          border:1px solid #dee2e6;
-                          border-radius:0.375rem;
-                          padding:1rem;">
-                <div class="text-center text-muted py-4">
-                  <i class="bi bi-hourglass-split"></i>
-                  Loading versions...
-                </div>
-              </div>
+            <div class="step-connector"></div>
+            <div class="step-item" id="step2Indicator">
+              <div class="step-number">2</div>
+              <div class="step-label">Select SW Parts & Versions</div>
             </div>
-
-          </div>
-
-          <!-- Export Type -->
-          <div class="mt-4">
-            <label class="form-label fw-bold">
-              Export Format
-            </label>
-
-            <div class="form-check mb-2">
-              <input class="form-check-input"
-                     type="radio"
-                     name="export_type"
-                     value="excel"
-                     checked>
-              <label class="form-check-label">
-                <i class="bi bi-file-earmark-spreadsheet me-2"></i>
-                Excel Report (.xlsx)
-              </label>
-            </div>
-
-            <div class="form-check">
-              <input class="form-check-input"
-                     type="radio"
-                     name="export_type"
-                     value="html">
-              <label class="form-check-label">
-                <i class="bi bi-file-earmark-code me-2"></i>
-                HTML Report
-              </label>
+            <div class="step-connector"></div>
+            <div class="step-item" id="step3Indicator">
+              <div class="step-number">3</div>
+              <div class="step-label">Select Features</div>
             </div>
           </div>
+        </div>
 
-        </form>
+        <!-- Step 1: Sheet Selection -->
+        <div id="step1Content" class="export-step">
+          <h6 class="fw-bold mb-3">
+            <i class="bi bi-file-earmark-spreadsheet me-2"></i>
+            Step 1: Select Sheet
+          </h6>
+          <div id="sheetsContainer"
+               style="max-height:400px; overflow-y:auto;
+                      border:1px solid #dee2e6;
+                      border-radius:0.375rem;
+                      padding:1rem;">
+            <div class="text-center text-muted py-4">
+              <i class="bi bi-hourglass-split"></i>
+              Loading sheets...
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: SW Part Number + Version Selection (Combined) -->
+        <div id="step2Content" class="export-step d-none">
+          <h6 class="fw-bold mb-3">
+            <i class="bi bi-diagram-3 me-2"></i>
+            Step 2: Select SW Part Numbers and Versions
+          </h6>
+          <div class="alert alert-info mb-3">
+            <i class="bi bi-info-circle me-2"></i>
+            Select SW Part Numbers to see their versions. All versions (active and inactive) are available for selection.
+          </div>
+          <div id="versionsContainer"
+               style="max-height:400px; overflow-y:auto;
+                      border:1px solid #dee2e6;
+                      border-radius:0.375rem;
+                      padding:1rem;">
+            <div class="text-center text-muted py-4">
+              <i class="bi bi-hourglass-split"></i>
+              Loading SW Part Numbers and versions...
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Feature Selection -->
+        <div id="step3Content" class="export-step d-none">
+          <h6 class="fw-bold mb-3">
+            <i class="bi bi-grid-3x3-gap me-2"></i>
+            Step 3: Select Features (Multi-select)
+          </h6>
+          <div id="featuresContainer"
+               style="max-height:400px; overflow-y:auto;
+                      border:1px solid #dee2e6;
+                      border-radius:0.375rem;
+                      padding:1rem;">
+            <div class="text-center text-muted py-4">
+              <i class="bi bi-hourglass-split"></i>
+              Loading features...
+            </div>
+          </div>
+        </div>
+
+        <!-- Selected Summary -->
+        <div id="exportSummary" class="mt-4 p-3 bg-light rounded d-none">
+          <h6 class="fw-bold mb-2">Export Summary:</h6>
+          <div id="summaryContent"></div>
+        </div>
       </div>
 
       <!-- Footer -->
       <div class="modal-footer">
         <button type="button"
                 class="btn btn-secondary"
+                id="exportCancelBtn"
                 data-bs-dismiss="modal">
           Cancel
         </button>
-
         <button type="button"
-                class="btn btn-success"
-                id="versionExportSubmitBtn">
+                class="btn btn-secondary d-none"
+                id="exportBackBtn"
+                onclick="goBackStep()">
+          <i class="bi bi-arrow-left me-1"></i>Back
+        </button>
+        <button type="button"
+                class="btn btn-primary d-none"
+                id="exportNextBtn"
+                onclick="goNextStep()">
+          Next <i class="bi bi-arrow-right ms-1"></i>
+        </button>
+        <button type="button"
+                class="btn btn-success d-none"
+                id="exportSubmitBtn"
+                onclick="submitExport()">
           <i class="bi bi-download me-1"></i>
-          Export
+          Export (Excel & HTML)
         </button>
       </div>
 
     </div>
   </div>
 </div>
+
+<style>
+.step-item {
+  flex: 1;
+  text-align: center;
+}
+.step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #dee2e6;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  margin: 0 auto 8px;
+}
+.step-item.active .step-number {
+  background: #0052A5;
+  color: white;
+}
+.step-item.completed .step-number {
+  background: #20c997;
+  color: white;
+}
+.step-label {
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+.step-item.active .step-label {
+  color: #0052A5;
+  font-weight: 600;
+}
+.step-connector {
+  flex: 1;
+  height: 2px;
+  background: #dee2e6;
+  margin: 0 10px;
+  margin-top: 20px;
+}
+.export-step {
+  min-height: 300px;
+}
+</style>
 
 <!-- Post-Export Reset Modal -->
 <div class="modal fade" id="postExportModal" tabindex="-1" aria-labelledby="postExportModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
@@ -731,7 +784,9 @@
   window.HIGHLIGHT_ID = "{{ highlight_id|default:'' }}";
   window.EXPORT_EXCEL_URL = "{% url 'export_excel' %}";
   window.EXPORT_HTML_URL = "{% url 'export_html' %}";
-  window.GET_EXPORTABLE_VERSIONS_URL = "{% url 'get_exportable_versions_api' %}";
+  window.GET_SHEETS_URL = "{% url 'get_sheets_api' %}";
+  window.GET_VERSIONS_URL = "{% url 'get_versions_for_sheet_api' %}";
+  window.GET_FEATURES_URL = "{% url 'get_features_for_selection_api' %}";
   window.TESTCASE_LIST_URL = "{% url 'testcase_list' %}";
   window.RESET_URL = "{% url 'reset_execution_data' %}";
   window.UPLOAD_EXCEL_URL = "{% url 'upload_excel' %}";
@@ -843,381 +898,513 @@
     });
   }
   
-  // Export Modal Functions for #exportModal
-  let exportableVersionsData = null;
-  let currentExportType = 'excel'; // Store export type (excel/html)
+  // NEW 3-STEP EXPORT FLOW
+  let currentExportStep = 1;
+  let selectedSheet = null;
+  let selectedSWParts = [];  // Track selected SW Part Numbers
+  let selectedVersions = [];
+  let selectedFeatures = [];
   
-  // Function to show export modal with export type
-  function showExportModal(exportType) {
-    currentExportType = exportType || 'excel';
-    const modal = document.getElementById('exportModal');
-    if (modal) {
-      modal.setAttribute('data-export-type', currentExportType);
-    }
+  // Function to show export modal
+  function showExportModal() {
+    // Reset state
+    currentExportStep = 1;
+    selectedSheet = null;
+    selectedSWParts = [];
+    selectedVersions = [];
+    selectedFeatures = [];
     
-    // Load exportable features and versions from API
-    fetch(window.GET_EXPORTABLE_VERSIONS_URL)
-      .then(response => {
-        if (!response.ok) {
-          // Handle HTTP errors (403, 500, etc.)
-          return response.text().then(text => {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}. ${text.substring(0, 200)}`);
-          });
-        }
-        return response.json();
-      })
+    // Show step 1
+    showStep(1);
+    
+    // Load sheets
+    loadSheets();
+    
+    // Show modal
+    const bootstrapModal = new bootstrap.Modal(document.getElementById('exportModal'));
+    bootstrapModal.show();
+  }
+  
+  // Load sheets for step 1
+  function loadSheets() {
+    const container = document.getElementById('sheetsContainer');
+    container.innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-hourglass-split"></i>Loading sheets...</div>';
+    
+    fetch(window.GET_SHEETS_URL)
+      .then(response => response.json())
       .then(data => {
         if (!data || !data.ok) {
-          alert('Error loading exportable data: ' + (data?.error || 'Unknown error'));
+          container.innerHTML = '<div class="alert alert-danger">Error loading sheets: ' + (data?.error || 'Unknown error') + '</div>';
           return;
         }
         
-        exportableVersionsData = data;
+        container.innerHTML = '';
         
-        // Populate Feature + Version Combinations (Checkbox-based)
-        const container = document.getElementById('featureVersionSelection');
-        if (container) {
-          container.innerHTML = '';
-          
-          if (data.features && data.features.length > 0) {
-            let hasAnyCompleted = false;
+        if (data.sheets && data.sheets.length > 0) {
+          data.sheets.forEach(sheet => {
+            const sheetDiv = document.createElement('div');
+            sheetDiv.className = 'form-check mb-2';
             
-            data.features.forEach(feature => {
-              // Create feature header
-              const featureHeader = document.createElement('div');
-              featureHeader.className = 'mb-3 mt-4';
-              featureHeader.style.borderBottom = '2px solid #dee2e6';
-              featureHeader.style.paddingBottom = '0.5rem';
-              
-              const featureTitle = document.createElement('h6');
-              featureTitle.className = 'fw-bold mb-2';
-              featureTitle.textContent = feature.name;
-              featureHeader.appendChild(featureTitle);
-              container.appendChild(featureHeader);
-              
-              // Create checkboxes for each version of this feature
-              if (feature.versions && feature.versions.length > 0) {
-                feature.versions.forEach(versionInfo => {
-                  const versionDiv = document.createElement('div');
-                  versionDiv.className = 'form-check mb-2 ms-3';
-                  
-                  const checkbox = document.createElement('input');
-                  checkbox.type = 'checkbox';
-                  checkbox.className = 'form-check-input feature-version-checkbox';
-                  checkbox.name = `feature_version_${feature.name.replace(/\s+/g, '_')}_${versionInfo.version_id}`;
-                  checkbox.id = `fv_${feature.name.replace(/\s+/g, '_')}_${versionInfo.version_id}`;
-                  checkbox.value = `${feature.name}::${versionInfo.version_id}`;
-                  checkbox.checked = false;
-                  checkbox.setAttribute('data-feature-name', feature.name);
-                  checkbox.setAttribute('data-version-id', versionInfo.version_id);
-                  checkbox.setAttribute('data-sw-part-number', versionInfo.sw_part_number);
-                  checkbox.setAttribute('data-app-sw-version', versionInfo.version);
-                  
-                  // Enable only if completed and not already exported
-                  if (versionInfo.completed && !versionInfo.is_exported) {
-                    checkbox.disabled = false;
-                    hasAnyCompleted = true;
-                  } else {
-                    checkbox.disabled = true;
-                    if (versionInfo.is_exported) {
-                      checkbox.title = 'Already exported';
-                    } else {
-                      checkbox.title = `Not completed (${versionInfo.executed}/${versionInfo.total} executed)`;
-                    }
-                  }
-                  
-                  checkbox.addEventListener('change', function() {
-                    validateExportModalSelection();
-                  });
-                  
-                  const label = document.createElement('label');
-                  label.className = 'form-check-label';
-                  label.htmlFor = checkbox.id;
-                  
-                  let labelText = `${versionInfo.sw_part_number} - ${versionInfo.version}`;
-                  if (versionInfo.completed && !versionInfo.is_exported) {
-                    labelText += ` (${versionInfo.executed}/${versionInfo.total} completed) ✅`;
-                    label.style.color = '#198754';
-                  } else if (versionInfo.is_exported) {
-                    labelText += ` (Already Exported)`;
-                    label.style.color = '#6c757d';
-                    label.style.textDecoration = 'line-through';
-                  } else {
-                    labelText += ` (${versionInfo.executed}/${versionInfo.total} executed) ⚠️ Not Completed`;
-                    label.style.color = '#6c757d';
-                  }
-                  
-                  label.textContent = labelText;
-                  label.title = checkbox.title;
-                  
-                  versionDiv.appendChild(checkbox);
-                  versionDiv.appendChild(label);
-                  container.appendChild(versionDiv);
-                });
-              }
-            });
+            const radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.className = 'form-check-input sheet-radio';
+            radio.name = 'sheet_selection';
+            radio.id = `sheet_${sheet.name.replace(/\s+/g, '_')}`;
+            radio.value = sheet.name;
+            radio.onchange = function() {
+              selectedSheet = sheet.name;
+              updateStepButtons();
+            };
             
-            // Export always allowed - no need to disable button
-          } else {
-            container.innerHTML = '<div class="alert alert-warning text-center"><i class="bi bi-exclamation-triangle me-2"></i>No features available.</div>';
-          }
+            const label = document.createElement('label');
+            label.className = 'form-check-label';
+            label.htmlFor = radio.id;
+            label.textContent = sheet.name;
+            
+            sheetDiv.appendChild(radio);
+            sheetDiv.appendChild(label);
+            container.appendChild(sheetDiv);
+          });
+        } else {
+          container.innerHTML = '<div class="alert alert-warning text-center"><i class="bi bi-exclamation-triangle me-2"></i>No sheets available.</div>';
         }
-        
-        validateExportModalSelection();
-        hideExportValidation();
-        
-        // Show modal
-        const bootstrapModal = new bootstrap.Modal(document.getElementById('exportModal'));
-        bootstrapModal.show();
       })
       .catch(error => {
-        console.error('Error loading exportable data:', error);
-        console.error('Error details:', {
-          message: error.message,
-          stack: error.stack,
-          url: window.GET_EXPORTABLE_VERSIONS_URL
-        });
-        let errorMessage = 'An error occurred while loading exportable data.';
-        if (error.message) {
-          errorMessage += '\n\nError: ' + error.message;
-        }
-        errorMessage += '\n\nPlease check the browser console (F12) for more details.';
-        alert(errorMessage);
+        console.error('Error loading sheets:', error);
+        container.innerHTML = '<div class="alert alert-danger">Error loading sheets. Please try again.</div>';
       });
   }
   
-  function updateExportModalVersionStates() {
-    // Get selected features from #exportModal
-    const selectedFeatures = Array.from(document.querySelectorAll('#exportModal .feature-checkbox:checked'))
-      .map(cb => cb.value);
+  // Load SW Part Numbers and Versions for step 2 - COMBINED SELECTION
+  function loadVersions() {
+    if (!selectedSheet) return;
     
-    // Update version checkboxes - disable if already exported for selected features
-    const versionCheckboxes = document.querySelectorAll('#exportModal .version-checkbox');
-    versionCheckboxes.forEach(cb => {
-      const featureExportStatus = JSON.parse(cb.getAttribute('data-feature-export-status') || '{}');
-      const versionId = cb.getAttribute('data-version-id');
-      const label = cb.nextElementSibling;
-      
-      // If no features selected, enable all versions
-      if (selectedFeatures.length === 0) {
-        cb.disabled = false;
-        cb.title = '';
-        if (label) {
-          // Remove "(Already Exported)" text if present
-          label.textContent = label.textContent.replace(' (Already Exported)', '');
-          label.style.color = '';
-        }
-      } else {
-        // Check if any selected feature is already exported for this version
-        const isExported = selectedFeatures.some(featureName => featureExportStatus[featureName] === true);
-        if (isExported) {
-          cb.disabled = true;
-          cb.title = 'Already exported for one or more selected features';
-          cb.checked = false; // Uncheck if disabled
-          if (label) {
-            // Add "(Already Exported)" text if not already present
-            let labelText = label.textContent.replace(' (Already Exported)', '');
-            if (!labelText.includes('(Already Exported)')) {
-              labelText += ' (Already Exported)';
-            }
-            label.textContent = labelText;
-            label.style.color = '#6c757d';
-          }
-        } else {
-          cb.disabled = false;
-          cb.title = '';
-          if (label) {
-            // Remove "(Already Exported)" text if present
-            label.textContent = label.textContent.replace(' (Already Exported)', '');
-            label.style.color = '';
-          }
-        }
-      }
-    });
-  }
-  
-  function validateExportModalSelection() {
-    // Export always allowed - no validation needed
-    const exportBtn = document.getElementById('versionExportSubmitBtn');
-    const validationDiv = document.getElementById('exportValidationMessage');
+    const container = document.getElementById('versionsContainer');
+    container.innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-hourglass-split"></i>Loading SW Part Numbers and versions...</div>';
     
-    if (exportBtn) {
-      exportBtn.disabled = false; // Always enabled
-    }
-    
-    // Hide validation message - no validation needed
-    if (validationDiv) {
-      validationDiv.classList.add('d-none');
-    }
-  }
-  
-  // Helper function to hide validation message in export modal
-  function hideExportValidation() {
-    const validationDiv = document.getElementById('exportValidationMessage');
-    if (validationDiv) {
-      validationDiv.classList.add('d-none');
-    }
-  }
-  
-  // Version Selection Modal Functions (keeping for backward compatibility)
-  function showVersionSelectionModal() {
-    // Load exportable features and versions from API
-    fetch(window.GET_EXPORTABLE_VERSIONS_URL)
+    fetch(window.GET_VERSIONS_URL + '?sheet=' + encodeURIComponent(selectedSheet))
       .then(response => response.json())
       .then(data => {
-        if (!data.ok) {
-          alert('Error loading exportable data: ' + (data.error || 'Unknown error'));
+        if (!data || !data.ok) {
+          container.innerHTML = '<div class="alert alert-danger">Error loading data: ' + (data?.error || 'Unknown error') + '</div>';
           return;
         }
         
-        exportableVersionsData = data;
+        container.innerHTML = '';
         
-        // Populate Features
-        const featuresContainer = document.getElementById('featuresContainer');
-        featuresContainer.innerHTML = '';
-        
-        if (data.features && data.features.length > 0) {
-          const hasCompletedFeature = data.features.some(f => f.is_completed);
-          
-          // Export always allowed - show all features regardless of completion
-          {
-            data.features.forEach(feature => {
-              const featureDiv = document.createElement('div');
-              featureDiv.className = 'form-check mb-2';
+        if (data.versions_by_sw && data.versions_by_sw.length > 0) {
+          // Create SW Part Number checkboxes with nested versions
+          data.versions_by_sw.forEach(swGroup => {
+            const swPartNumber = swGroup.sw_part_number;
+            const versions = swGroup.versions;
+            
+            if (!versions || versions.length === 0) return;
+            
+            // Create container for this SW Part Number
+            const swContainer = document.createElement('div');
+            swContainer.className = 'mb-3';
+            swContainer.id = `sw_container_${swPartNumber.replace(/\s+/g, '_')}`;
+            
+            // Create SW Part Number checkbox
+            const swCheckboxDiv = document.createElement('div');
+            swCheckboxDiv.className = 'form-check mb-2';
+            
+            const swCheckbox = document.createElement('input');
+            swCheckbox.type = 'checkbox';
+            swCheckbox.className = 'form-check-input sw-part-checkbox';
+            swCheckbox.id = `sw_part_${swPartNumber.replace(/\s+/g, '_')}`;
+            swCheckbox.value = swPartNumber;
+            swCheckbox.onchange = function() {
+              const versionsContainer = swContainer.querySelector('.versions-nested');
+              if (swCheckbox.checked) {
+                // Add SW Part Number to selection
+                if (!selectedSWParts.includes(swPartNumber)) {
+                  selectedSWParts.push(swPartNumber);
+                }
+                // Show versions
+                if (versionsContainer) {
+                  versionsContainer.style.display = 'block';
+                }
+              } else {
+                // Remove SW Part Number from selection
+                selectedSWParts = selectedSWParts.filter(sw => sw !== swPartNumber);
+                // Hide versions
+                if (versionsContainer) {
+                  versionsContainer.style.display = 'none';
+                }
+                // Uncheck all versions under this SW
+                versionsContainer.querySelectorAll('.version-checkbox').forEach(vcb => {
+                  vcb.checked = false;
+                  const versionId = parseInt(vcb.value);
+                  selectedVersions = selectedVersions.filter(v => v !== versionId);
+                });
+              }
+              updateStepButtons();
+            };
+            
+            const swLabel = document.createElement('label');
+            swLabel.className = 'form-check-label fw-bold';
+            swLabel.htmlFor = swCheckbox.id;
+            swLabel.innerHTML = `<i class="bi bi-box me-2"></i>${swPartNumber}`;
+            
+            swCheckboxDiv.appendChild(swCheckbox);
+            swCheckboxDiv.appendChild(swLabel);
+            swContainer.appendChild(swCheckboxDiv);
+            
+            // Create nested versions container (hidden by default)
+            const versionsContainer = document.createElement('div');
+            versionsContainer.className = 'versions-nested ms-4 mt-2';
+            versionsContainer.style.display = 'none';  // Hidden until SW is selected
+            
+            // Track seen version IDs to prevent duplicates
+            const seenVersionIds = new Set();
+            versions.forEach(version => {
+              // Skip if we've already rendered this version ID
+              if (seenVersionIds.has(version.id)) {
+                console.warn('Duplicate version ID detected:', version.id, 'for SW:', swPartNumber);
+                return;
+              }
+              seenVersionIds.add(version.id);
+              
+              const versionDiv = document.createElement('div');
+              versionDiv.className = 'form-check mb-2';
               
               const checkbox = document.createElement('input');
               checkbox.type = 'checkbox';
-              checkbox.className = 'form-check-input feature-checkbox';
-              checkbox.name = `feature_${feature.feature_name.replace(/\s+/g, '_')}`;
-              checkbox.id = `feature_${feature.feature_name.replace(/\s+/g, '_')}`;
-              checkbox.value = feature.feature_name;
-              checkbox.checked = false;
-              
-                // All features are selectable - no completion check
-                checkbox.title = `Feature available for export`;
-              
-              checkbox.addEventListener('change', function() {
-                updateVersionStates();
-                validateExportSelection();
-              });
+              checkbox.className = 'form-check-input version-checkbox';
+              checkbox.id = `version_${version.id}`;
+              checkbox.value = version.id;
+              checkbox.setAttribute('data-sw-part', swPartNumber);
+              checkbox.onchange = function() {
+                if (checkbox.checked) {
+                  if (!selectedVersions.includes(version.id)) {
+                    selectedVersions.push(version.id);
+                  }
+                } else {
+                  selectedVersions = selectedVersions.filter(v => v !== version.id);
+                }
+                updateStepButtons();
+              };
               
               const label = document.createElement('label');
               label.className = 'form-check-label';
               label.htmlFor = checkbox.id;
+              const statusBadge = version.is_active ? '<span class="badge bg-success ms-2">Active</span>' : '<span class="badge bg-secondary ms-2">Inactive</span>';
+              label.innerHTML = `Version ${version.version}${statusBadge}`;
               
-              let labelText = feature.feature_name;
-              if (feature.is_completed) {
-                labelText += ` (✓ Completed in ${feature.completed_versions.length} version(s))`;
-              } else {
-                labelText += ` (✗ Not completed)`;
-                label.style.color = '#6c757d';
-                label.style.textDecoration = 'line-through';
-              }
-              
-              label.textContent = labelText;
-              label.title = checkbox.title;
-              
-              featureDiv.appendChild(checkbox);
-              featureDiv.appendChild(label);
-              featuresContainer.appendChild(featureDiv);
+              versionDiv.appendChild(checkbox);
+              versionDiv.appendChild(label);
+              versionsContainer.appendChild(versionDiv);
             });
-          }
+            
+            swContainer.appendChild(versionsContainer);
+            container.appendChild(swContainer);
+          });
         } else {
-          featuresContainer.innerHTML = '<div class="alert alert-warning text-center"><i class="bi bi-exclamation-triangle me-2"></i>No features available.</div>';
+          container.innerHTML = '<div class="alert alert-warning text-center"><i class="bi bi-exclamation-triangle me-2"></i>No SW Part Numbers or versions available for this sheet.</div>';
+        }
+      })
+      .catch(error => {
+        console.error('Error loading data:', error);
+        container.innerHTML = '<div class="alert alert-danger">Error loading data. Please try again.</div>';
+      });
+  }
+  
+  // Load features for step 3
+  function loadFeatures() {
+    if (!selectedSheet || selectedVersions.length === 0) return;
+    
+    const container = document.getElementById('featuresContainer');
+    container.innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-hourglass-split"></i>Loading features...</div>';
+    
+    const url = window.GET_FEATURES_URL + '?sheet=' + encodeURIComponent(selectedSheet) + 
+                selectedVersions.map(v => '&versions=' + encodeURIComponent(v)).join('');
+    
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        if (!data || !data.ok) {
+          container.innerHTML = '<div class="alert alert-danger">Error loading features: ' + (data?.error || 'Unknown error') + '</div>';
+          return;
         }
         
-        // Populate Versions
-        const versionsContainer = document.getElementById('versionsContainer');
-        versionsContainer.innerHTML = '';
+        container.innerHTML = '';
         
-        if (data.versions && data.versions.length > 0) {
-          data.versions.forEach(version => {
-            const versionDiv = document.createElement('div');
-            versionDiv.className = 'form-check mb-2';
+        if (data.features && data.features.length > 0) {
+          data.features.forEach(feature => {
+            const featureDiv = document.createElement('div');
+            featureDiv.className = 'form-check mb-2';
             
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
-            checkbox.className = 'form-check-input version-checkbox';
-            checkbox.name = `version_${version.version_id}`;
-            checkbox.id = `version_${version.version_id}`;
-            checkbox.value = version.version_id;
-            checkbox.checked = false;
-            checkbox.setAttribute('data-version-id', version.version_id);
-            checkbox.setAttribute('data-sw-part-number', version.sw_part_number);
-            checkbox.setAttribute('data-app-sw-version', version.app_sw_version);
-            checkbox.setAttribute('data-feature-export-status', JSON.stringify(version.feature_export_status));
-            
-            checkbox.addEventListener('change', function() {
-              validateExportSelection();
-            });
+            checkbox.className = 'form-check-input feature-checkbox';
+            checkbox.id = `feature_${feature.name.replace(/\s+/g, '_')}`;
+            checkbox.value = feature.name;
+            checkbox.onchange = function() {
+              if (checkbox.checked) {
+                if (!selectedFeatures.includes(feature.name)) {
+                  selectedFeatures.push(feature.name);
+                }
+              } else {
+                selectedFeatures = selectedFeatures.filter(f => f !== feature.name);
+              }
+              updateStepButtons();
+              updateSummary();
+            };
             
             const label = document.createElement('label');
             label.className = 'form-check-label';
             label.htmlFor = checkbox.id;
-            label.textContent = `${version.sw_part_number} - ${version.app_sw_version}`;
+            label.textContent = feature.name;
             
-            versionDiv.appendChild(checkbox);
-            versionDiv.appendChild(label);
-            versionsContainer.appendChild(versionDiv);
+            featureDiv.appendChild(checkbox);
+            featureDiv.appendChild(label);
+            container.appendChild(featureDiv);
           });
         } else {
-          versionsContainer.innerHTML = '<div class="alert alert-warning text-center"><i class="bi bi-exclamation-triangle me-2"></i>No versions available.</div>';
+          container.innerHTML = '<div class="alert alert-warning text-center"><i class="bi bi-exclamation-triangle me-2"></i>No features available for this selection.</div>';
         }
-        
-        // Update version states based on selected features
-        updateVersionStates();
-        validateExportSelection();
-        
-        // Show modal
-        const modal = new bootstrap.Modal(document.getElementById('versionSelectionModal'));
-        modal.show();
       })
       .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while loading exportable data.');
+        console.error('Error loading features:', error);
+        container.innerHTML = '<div class="alert alert-danger">Error loading features. Please try again.</div>';
       });
   }
   
-  function updateVersionStates() {
-    // Get selected features
-    const selectedFeatures = Array.from(document.querySelectorAll('.feature-checkbox:checked'))
-      .map(cb => cb.value);
+  // Show specific step
+  function showStep(step) {
+    currentExportStep = step;
     
-    // Update version checkboxes - disable if already exported for selected features
-    const versionCheckboxes = document.querySelectorAll('.version-checkbox');
-    versionCheckboxes.forEach(cb => {
-      const featureExportStatus = JSON.parse(cb.getAttribute('data-feature-export-status') || '{}');
-      const versionId = cb.getAttribute('data-version-id');
-      
-      // If no features selected, enable all versions (but check for any exported)
-      if (selectedFeatures.length === 0) {
-        // Check if any feature is exported for this version
-        const hasExportedFeature = Object.values(featureExportStatus).some(status => status === true);
-        if (hasExportedFeature) {
-          cb.disabled = false;
-          cb.title = 'Some features already exported for this version';
-        } else {
-          cb.disabled = false;
-          cb.title = '';
-        }
-      } else {
-        // Check if any selected feature is already exported for this version
-        // All versions are selectable - no export status check
-        cb.disabled = false;
-        cb.title = '';
-      }
-    });
+    // Hide all steps
+    document.getElementById('step1Content').classList.add('d-none');
+    document.getElementById('step2Content').classList.add('d-none');
+    document.getElementById('step3Content').classList.add('d-none');
+    
+    // Show current step
+    if (step === 1) {
+      document.getElementById('step1Content').classList.remove('d-none');
+    } else if (step === 2) {
+      document.getElementById('step2Content').classList.remove('d-none');
+      loadVersions();
+    } else if (step === 3) {
+      document.getElementById('step3Content').classList.remove('d-none');
+      loadFeatures();
+    }
+    
+    // Update step indicators
+    updateStepIndicators();
+    updateStepButtons();
   }
   
-  function validateExportSelection() {
-    // Check if at least one feature and one version are selected
-    const selectedFeatures = document.querySelectorAll('.feature-checkbox:checked:not(:disabled)');
-    const selectedVersions = document.querySelectorAll('.version-checkbox:checked:not(:disabled)');
-    
-    const exportBtn = document.getElementById('versionExportSubmitBtn');
-    if (exportBtn) {
-      exportBtn.disabled = !(selectedFeatures.length > 0 && selectedVersions.length > 0);
+  // Update step indicators
+  function updateStepIndicators() {
+    for (let i = 1; i <= 3; i++) {
+      const indicator = document.getElementById(`step${i}Indicator`);
+      if (i < currentExportStep) {
+        indicator.classList.add('completed');
+        indicator.classList.remove('active');
+      } else if (i === currentExportStep) {
+        indicator.classList.add('active');
+        indicator.classList.remove('completed');
+      } else {
+        indicator.classList.remove('active', 'completed');
+      }
     }
+  }
+  
+  // Update step buttons
+  function updateStepButtons() {
+    const cancelBtn = document.getElementById('exportCancelBtn');
+    const backBtn = document.getElementById('exportBackBtn');
+    const nextBtn = document.getElementById('exportNextBtn');
+    const submitBtn = document.getElementById('exportSubmitBtn');
+    
+    // Cancel button always visible
+    cancelBtn.classList.remove('d-none');
+    
+    // Back button visible on steps 2 and 3
+    if (currentExportStep > 1) {
+      backBtn.classList.remove('d-none');
+    } else {
+      backBtn.classList.add('d-none');
+    }
+    
+    // Next/Submit button logic
+    if (currentExportStep === 1) {
+      nextBtn.classList.add('d-none');
+      submitBtn.classList.add('d-none');
+      if (selectedSheet) {
+        nextBtn.classList.remove('d-none');
+      }
+    } else if (currentExportStep === 2) {
+      nextBtn.classList.add('d-none');
+      submitBtn.classList.add('d-none');
+      // Allow next if at least one SW Part is selected (versions are optional but recommended)
+      if (selectedSWParts.length > 0) {
+        nextBtn.classList.remove('d-none');
+      }
+    } else if (currentExportStep === 3) {
+      nextBtn.classList.add('d-none');
+      submitBtn.classList.add('d-none');
+      if (selectedFeatures.length > 0) {
+        submitBtn.classList.remove('d-none');
+        updateSummary();
+      }
+    }
+  }
+  
+  // Go to next step
+  function goNextStep() {
+    if (currentExportStep < 3) {
+      showStep(currentExportStep + 1);
+    }
+  }
+  
+  // Go to previous step
+  function goBackStep() {
+    if (currentExportStep > 1) {
+      showStep(currentExportStep - 1);
+    }
+  }
+  
+  // Update summary
+  function updateSummary() {
+    const summaryDiv = document.getElementById('exportSummary');
+    const summaryContent = document.getElementById('summaryContent');
+    
+    if (selectedSheet && selectedSWParts.length > 0 && selectedFeatures.length > 0) {
+      summaryDiv.classList.remove('d-none');
+      
+      // Get version info grouped by SW Part Number
+      const versionsBySW = {};
+      document.querySelectorAll('.version-checkbox:checked').forEach(cb => {
+        const swPartNumber = cb.getAttribute('data-sw-part');
+        if (!swPartNumber) return;
+        
+        const label = document.querySelector(`label[for="${cb.id}"]`);
+        if (label) {
+          const versionText = label.textContent.trim().replace(/\s*\(Active\)|\s*\(Inactive\)/g, '').replace('Version ', '');
+          if (!versionsBySW[swPartNumber]) {
+            versionsBySW[swPartNumber] = [];
+          }
+          versionsBySW[swPartNumber].push(versionText);
+        }
+      });
+      
+      // Build summary text
+      let swPartsText = selectedSWParts.join(', ');
+      let versionsText = '';
+      if (Object.keys(versionsBySW).length > 0) {
+        versionsText = Object.keys(versionsBySW).map(sw => {
+          const versions = versionsBySW[sw].length > 0 ? versionsBySW[sw].join(', ') : 'No versions selected';
+          return `${sw}: ${versions}`;
+        }).join('; ');
+      } else {
+        versionsText = 'No versions selected';
+      }
+      
+      summaryContent.innerHTML = `
+        <div><strong>Sheet:</strong> ${selectedSheet}</div>
+        <div><strong>SW Part Numbers:</strong> ${swPartsText}</div>
+        <div><strong>Versions:</strong> ${versionsText}</div>
+        <div><strong>Features:</strong> ${selectedFeatures.join(', ')}</div>
+      `;
+    } else {
+      summaryDiv.classList.add('d-none');
+    }
+  }
+  
+  // Submit export
+  function submitExport() {
+    if (!selectedSheet) {
+      alert('Please select a sheet.');
+      return;
+    }
+    if (selectedSWParts.length === 0) {
+      alert('Please select at least one SW Part Number.');
+      return;
+    }
+    if (selectedVersions.length === 0) {
+      alert('Please select at least one version under the selected SW Part Number(s).');
+      return;
+    }
+    if (selectedFeatures.length === 0) {
+      alert('Please select at least one feature.');
+      return;
+    }
+    
+    const payload = {
+      sheet: selectedSheet,
+      versions: selectedVersions,
+      features: selectedFeatures
+    };
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+    if (modal) modal.hide();
+    
+    // Show loading message
+    alert('Export started. This may take a moment...');
+    
+    // Export Excel
+    fetch(window.EXPORT_EXCEL_URL, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(response => {
+      if (response.ok) {
+        return response.blob();
+      }
+      throw new Error('Excel export failed');
+    })
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `TestCases_Export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    })
+    .catch(error => {
+      console.error('Excel export error:', error);
+      alert('Error exporting to Excel. Please try again.');
+    });
+    
+    // Export HTML (download as file)
+    fetch(window.EXPORT_HTML_URL, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(response => {
+      if (response.ok) {
+        return response.blob();
+      }
+      throw new Error('HTML export failed');
+    })
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `TestCases_Report_${new Date().toISOString().slice(0, 10)}.html`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    })
+    .catch(error => {
+      console.error('HTML export error:', error);
+      alert('Error exporting to HTML. Please try again.');
+    });
   }
   
   function handleAddNewData() {
@@ -1265,48 +1452,8 @@
   
   // Export button handler is in list.js - no duplicate handler needed here
   
-  // Check if export button should be disabled on page load
-  document.addEventListener('DOMContentLoaded', function() {
-    const exportButton = document.getElementById('exportButton');
-    if (exportButton) {
-      // Check availability on page load - need at least one completed feature
-      fetch(window.GET_EXPORTABLE_VERSIONS_URL)
-        .then(response => response.json())
-        .then(data => {
-          if (!data.ok) {
-            exportButton.disabled = true;
-            exportButton.title = 'Error loading exportable data';
-            return;
-          }
-          
-          // Check if there's at least one completed feature+version combination
-          let hasCompleted = false;
-          if (data.features && data.features.length > 0) {
-            for (const feature of data.features) {
-              if (feature.versions && feature.versions.length > 0) {
-                for (const version of feature.versions) {
-                  if (version.completed && !version.is_exported) {
-                    hasCompleted = true;
-                    break;
-                  }
-                }
-                if (hasCompleted) break;
-              }
-            }
-          }
-          if (!hasCompleted) {
-            exportButton.disabled = true;
-            exportButton.title = 'No completed feature+version combinations available for export';
-          } else {
-            exportButton.disabled = false;
-            exportButton.title = '';
-          }
-        })
-        .catch(error => {
-          console.error('Error checking exportable data:', error);
-        });
-    }
-  });
+  // REMOVED: DOMContentLoaded check that disables export button - export always allowed
+  // Export button is always enabled, no checks needed
   
   // Handle sheet change - reset sw and version parameters
   function handleSheetChange(selectElement) {

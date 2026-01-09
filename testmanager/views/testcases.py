@@ -233,27 +233,15 @@ def testcase_list(request):
             sheets__sheet_name=selected_sheet
         ).distinct()
         
-        # Apply role-based filtering
-        if is_manager_check:
-            # Manager: Show ALL versions (active + inactive)
-            versions = versions_with_sheet.order_by('-created_at')
-            version_list_with_status = [
-                {
-                    'version': v.app_sw_version,
-                    'is_active': v.is_active,
-                    'is_locked': v.is_locked,
-                }
-                for v in versions
-            ]
-            version_list = sort_versions([v['version'] for v in version_list_with_status])
-        else:
-            # Non-manager: Only show active versions
-            versions = versions_with_sheet.filter(is_active=True).order_by('-created_at')
-            version_list = sort_versions([v.app_sw_version for v in versions])
-            if versions.exists():
-                first_version = versions.first()
-                if first_version:
-                    active_version_for_sw[selected_sw] = first_version.app_sw_version
+        # BUG FIX: Only show active versions in dropdowns, even for managers
+        # Old versions NEVER shown in dropdowns (requirement #11)
+        # Live UI (/home, /testcases/) → ACTIVE INSTANCE ONLY, ACTIVE VERSIONS ONLY
+        versions = versions_with_sheet.filter(is_active=True).order_by('-created_at')  # BUG FIX: Only active versions
+        version_list = sort_versions([v.app_sw_version for v in versions])
+        if versions.exists():
+            first_version = versions.first()
+            if first_version:
+                active_version_for_sw[selected_sw] = first_version.app_sw_version
     elif selected_sheet:
         # Sheet selected but no SW selected - show versions for all SW in that sheet
         from ..version_service import get_versions_for_user
@@ -264,22 +252,12 @@ def testcase_list(request):
             sheets__sheet_name=selected_sheet
         ).distinct()
         
-        if is_manager_check:
-            version_set = set()
-            for v in versions_with_sheet.order_by('-created_at'):
-                if v.app_sw_version not in version_set:
-                    version_list_with_status.append({
-                        'version': v.app_sw_version,
-                        'is_active': v.is_active,
-                        'is_locked': v.is_locked,
-                    })
-                    version_set.add(v.app_sw_version)
-            version_list = sort_versions([v['version'] for v in version_list_with_status])
-        else:
-            versions = versions_with_sheet.filter(is_active=True).order_by('-created_at')
-            version_list = sort_versions([v.app_sw_version for v in versions])
-            for v in versions:
-                active_version_for_sw[v.sw_part_number] = v.app_sw_version
+        # BUG FIX: Only show active versions in dropdowns, even for managers
+        # Old versions NEVER shown in dropdowns (requirement #11)
+        versions = versions_with_sheet.filter(is_active=True).order_by('-created_at')  # BUG FIX: Only active versions
+        version_list = sort_versions([v.app_sw_version for v in versions])
+        for v in versions:
+            active_version_for_sw[v.sw_part_number] = v.app_sw_version
     # If no sheet selected, don't show versions (user must select sheet first)
 
     highlight_id = request.GET.get("highlight") or request.session.pop("highlight_id", "")
@@ -424,8 +402,18 @@ def testcase_list(request):
             execution_map_by_tc_id[tc_id] = {}
         execution_map_by_tc_id[tc_id][version_id] = exec_obj
 
-    # STRICT: sl_no does NOT exist on TestCase - removed annotation
-    # No need to annotate sl_no_int - sorting uses id instead
+    # CRITICAL: Order by sw_part_number then sl_no (sl_no is scoped per sw_part_number)
+    # Convert sl_no to integer for proper numeric ordering
+    from django.db.models import Case, When, IntegerField, Value
+    from django.db.models.functions import Cast
+    qs = qs.annotate(
+        sl_no_int=Case(
+            When(sl_no__isnull=True, then=Value(0)),
+            When(sl_no__exact="", then=Value(0)),
+            default=Cast('sl_no', IntegerField()),
+            output_field=IntegerField()
+        )
+    ).order_by('sw_part_number', 'sl_no_int')
     
     # Convert to list and sort by version (newest first), then by id
     # STRICT: sheet_name and sl_no do NOT exist on TestCase - removed from sorting
@@ -585,9 +573,9 @@ def testcase_add(request):
     # REMOVED: No blocking checks - form is self-contained
     # User can enter sheet/version even if not in dropdowns
     
-    # Calculate next SL.NO (placeholder for now)
-    last_sl = 0
-    next_sl_no = (last_sl or 0) + 1
+    # Calculate next SL.NO - will be updated when sw_part_number is selected
+    # sl_no is scoped per sw_part_number
+    next_sl_no = "1"  # Default, will be updated via AJAX when SW Part Number is selected
 
     if request.method == "POST":
         # Get values from form (all inside the form, no external dependency)
@@ -712,12 +700,18 @@ def testcase_add(request):
 
         # Create test case with explicit version and sheet binding
         with transaction.atomic():  # type: ignore
+            # CRITICAL: If sl_no is not provided or empty, calculate next sl_no for this sw_part_number
+            # sl_no is scoped per sw_part_number (not sheet/version/feature)
+            if not sl_no or not sl_no.strip():
+                from ..utils import get_next_sl_no_for_sw_part_number
+                sl_no = get_next_sl_no_for_sw_part_number(sw_part_number, active_instance)
+            
             # CRITICAL: sl_no must be stored in TestCase (master definition)
             # sl_no must be immutable across versions
             test = TestCase.objects.create(
                 instance=active_instance,
                 sheet_name=sheet_name_clean,  # Store sheet_name for backward compatibility
-                sl_no=sl_no,  # CRITICAL: Persist sl_no from form
+                sl_no=sl_no,  # CRITICAL: Persist sl_no from form (or auto-calculated)
                 sw_part_number=sw_part_number,
                 feature=clean(request.POST.get("feature")),
                 requirement_id=clean(request.POST.get("requirement_id")),
@@ -1317,6 +1311,35 @@ def testcase_test_it(request, id):
 # -------------------------------------------------------------------------------------
 # VIEW TEST EXECUTION (READ-ONLY)
 # -------------------------------------------------------------------------------------
+@login_required
+def get_next_sl_no_api(request):
+    """
+    API endpoint to get the next sl_no for a given sw_part_number.
+    Used by "Add New Test Case" UI to auto-fill sl_no field.
+    
+    sl_no is scoped per sw_part_number (not sheet/version/feature).
+    """
+    sw_part_number = request.GET.get('sw_part_number', '').strip()
+    
+    if not sw_part_number:
+        return JsonResponse({
+            'ok': False,
+            'error': 'SW Part Number is required'
+        }, status=400)
+    
+    from ..utils import get_next_sl_no_for_sw_part_number
+    from ..services import get_active_instance
+    
+    active_instance = get_active_instance()
+    next_sl_no = get_next_sl_no_for_sw_part_number(sw_part_number, active_instance)
+    
+    return JsonResponse({
+        'ok': True,
+        'next_sl_no': next_sl_no,
+        'sw_part_number': sw_part_number
+    })
+
+
 @login_required
 def view_test_execution(request, id):
     """

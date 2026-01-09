@@ -12,105 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Handle export submission for #exportModal
-  const exportSubmitBtn = document.getElementById('versionExportSubmitBtn');
-  if (exportSubmitBtn) {
-    exportSubmitBtn.addEventListener('click', function() {
-      // Collect selected features and versions
-      const selectedFeatures = Array.from(document.querySelectorAll('#exportModal .feature-checkbox:checked:not(:disabled)'))
-        .map(cb => cb.value);
-      
-      const selectedVersionIds = Array.from(document.querySelectorAll('#exportModal .version-checkbox:checked:not(:disabled)'))
-        .map(cb => parseInt(cb.value));
-      
-      // Export always allowed - if nothing selected, export ALL data
-      // Backend will handle empty selections by exporting all available data
-      
-      // Get export type from modal data attribute (set when opening modal)
-      const modal = document.getElementById('exportModal');
-      const exportType = modal.getAttribute('data-export-type') || 'excel';
-      
-      // Build JSON payload - backend expects features and versions arrays
-      const payload = {
-        features: selectedFeatures,
-        versions: selectedVersionIds
-      };
-      
-      // Close modal
-      const bootstrapModal = bootstrap.Modal.getInstance(modal);
-      if (bootstrapModal) bootstrapModal.hide();
-      
-      // Submit export request
-      if (exportType === 'excel') {
-        // Excel export - POST request that downloads file
-        fetch(window.EXPORT_EXCEL_URL, {
-          method: 'POST',
-          headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        })
-        .then(response => {
-          if (response.ok) {
-            return response.blob();
-          }
-          throw new Error('Export failed');
-        })
-        .then(blob => {
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `TestCases_Export_${new Date().toISOString().slice(0, 10)}.xlsx`;
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(a);
-          // Redirect to list page with success message
-          window.location.href = window.TESTCASE_LIST_URL + '?export_completed=1';
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          alert('Error exporting to Excel. Please try again.');
-        });
-      } else {
-        // HTML export - POST request (returns redirect)
-        fetch(window.EXPORT_HTML_URL, {
-          method: 'POST',
-          headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload),
-          redirect: 'follow'
-        })
-        .then(response => {
-          if (response.redirected) {
-            // Follow redirect to snapshot view
-            window.location.href = response.url;
-          } else if (response.ok) {
-            // Try to parse as JSON (if server returns JSON)
-            return response.json().then(data => {
-              if (data.redirect_url) {
-                window.location.href = data.redirect_url;
-              } else {
-                window.location.href = window.TESTCASE_LIST_URL + '?export_completed=1';
-              }
-            }).catch(() => {
-              // Not JSON, just redirect to list
-              window.location.href = window.TESTCASE_LIST_URL + '?export_completed=1';
-            });
-          } else {
-            throw new Error('Export failed');
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          alert('Error exporting to HTML. Please try again.');
-        });
-      }
-    });
-  }
+  // Export modal logic is now in list.html (inline script)
 });
 
 // Helper function to get CSRF token
@@ -129,23 +31,7 @@ function getCookie(name) {
   return cookieValue;
 }
 
-// Helper function to show validation message in export modal
-function showExportValidation(message) {
-  const validationDiv = document.getElementById('exportValidationMessage');
-  const validationText = document.getElementById('exportValidationText');
-  if (validationDiv && validationText) {
-    validationText.textContent = message;
-    validationDiv.classList.remove('d-none');
-  }
-}
-
-// Helper function to hide validation message in export modal
-function hideExportValidation() {
-  const validationDiv = document.getElementById('exportValidationMessage');
-  if (validationDiv) {
-    validationDiv.classList.add('d-none');
-  }
-}
+// Export validation functions removed - new 3-step flow handles validation inline
 
 // Toggle sidebar function (needs to be global for onclick handlers)
 function toggleSidebar() {

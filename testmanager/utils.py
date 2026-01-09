@@ -43,6 +43,51 @@ def clean_slno(value):
     return str(value).strip()
 
 
+def get_next_sl_no_for_sw_part_number(sw_part_number, instance=None):
+    """
+    Get the next sl_no for a specific sw_part_number.
+    
+    sl_no is scoped ONLY to sw_part_number (not sheet, feature, or version).
+    Each SW Part Number has its own independent sl_no sequence.
+    
+    Args:
+        sw_part_number: The SW Part Number to get next sl_no for
+        instance: Optional TestInstance (defaults to active instance)
+    
+    Returns:
+        str: Next sl_no as string (e.g., "1", "2", "13")
+    """
+    from django.db.models import Max
+    from .models import TestCase
+    from .services import get_active_instance
+    
+    if not sw_part_number or not sw_part_number.strip():
+        return "1"
+    
+    if instance is None:
+        instance = get_active_instance()
+    
+    # Find max sl_no for this sw_part_number ONLY (not scoped to sheet/version/feature)
+    # Convert sl_no to integer for proper max calculation
+    max_result = TestCase.objects.filter(
+        instance=instance,
+        sw_part_number=sw_part_number.strip()
+    ).exclude(sl_no__isnull=True).exclude(sl_no__exact="").aggregate(
+        max_sl_no=Max('sl_no')
+    )
+    
+    max_sl_no = max_result.get('max_sl_no')
+    
+    # Try to convert to int, fallback to 0 if conversion fails
+    try:
+        max_int = int(max_sl_no) if max_sl_no else 0
+    except (ValueError, TypeError):
+        max_int = 0
+    
+    next_sl_no = max_int + 1
+    return str(next_sl_no)
+
+
 def normalize(text):
     """
     Used to normalize Excel headers before mapping:

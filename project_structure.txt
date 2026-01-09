@@ -1,0 +1,348 @@
+﻿testcase_project/
+├── AUDIT_REPORT.md
+├── DATABASE_STORAGE_DESIGN.md
+├── db.sqlite3
+├── manage.py
+├── README.md
+├── requirements.txt
+├── Test 1.xlsx
+├── .cursor/
+│   └── debug.log
+├── .venv/
+│   ├── .gitignore
+│   ├── pyvenv.cfg
+│   ├── Include/
+│   ├── Lib/
+│   │   └── site-packages/
+│   │       └── [Python packages - too large to list in detail]
+│   └── Scripts/
+│       ├── activate
+│       ├── activate.bat
+│       ├── activate.fish
+│       ├── Activate.ps1
+│       ├── deactivate.bat
+│       ├── f2py.exe
+│       ├── flask.exe
+│       ├── numpy-config.exe
+│       ├── pip.exe
+│       ├── pip3.13.exe
+│       ├── pip3.exe
+│       ├── python.exe
+│       └── pythonw.exe
+├── html_reports/
+│   ├── 2026-01-07_09-39-56_13.13.html
+│   └── 2026-01-07_09-44-42_131.31.html
+├── manager_review_package/
+│   ├── admin.py
+│   ├── excel_export.py
+│   ├── export_views.py
+│   ├── models.py
+│   ├── README.md
+│   ├── migrations/
+│   │   ├── __init__.py
+│   │   └── __pycache__/
+│   ├── static/
+│   │   └── testmanager/
+│   │       ├── css/
+│   │       │   ├── add.css
+│   │       │   ├── admin_custom.css
+│   │       │   ├── admin_page.css
+│   │       │   ├── base.css
+│   │       │   ├── create_user.css
+│   │       │   ├── export_html.css
+│   │       │   ├── history.css
+│   │       │   ├── instruction.css
+│   │       │   ├── list.css
+│   │       │   ├── test_it.css
+│   │       │   └── view_test.css
+│   │       ├── images/
+│   │       │   ├── README.txt
+│   │       │   └── tvs-logo.png
+│   │       └── js/
+│   │           ├── dashboard.js
+│   │           ├── export_html.js
+│   │           ├── inline_edit.js
+│   │           ├── list.js
+│   │           └── list_state.js
+│   ├── templates/
+│   │   └── testmanager/
+│   │       ├── add.html
+│   │       ├── admin_page.html
+│   │       ├── base.html
+│   │       ├── create_new_test_instance.html
+│   │       ├── create_testcases.html
+│   │       ├── create_user.html
+│   │       ├── export_html.html
+│   │       ├── history.html
+│   │       ├── home.html
+│   │       ├── input_versions.html
+│   │       ├── instruction.html
+│   │       ├── list.html
+│   │       ├── select_sheet.html
+│   │       ├── test_it.html
+│   │       ├── upload.html
+│   │       └── view_test.html
+│   └── views/
+│       ├── __init__.py
+│       ├── admin_views.py
+│       ├── export_views.py
+│       ├── home.py
+│       ├── import_views.py
+│       ├── testcases.py
+│       └── __pycache__/
+├── staticfiles/
+│   ├── admin/
+│   │   ├── css/
+│   │   │   ├── autocomplete.css
+│   │   │   ├── base.css
+│   │   │   ├── changelists.css
+│   │   │   ├── dark_mode.css
+│   │   │   ├── dashboard.css
+│   │   │   ├── forms.css
+│   │   │   ├── login.css
+│   │   │   ├── nav_sidebar.css
+│   │   │   ├── responsive.css
+│   │   │   ├── responsive_rtl.css
+│   │   │   ├── rtl.css
+│   │   │   ├── unusable_password_field.css
+│   │   │   ├── widgets.css
+│   │   │   └── vendor/
+│   │   │       └── select2/
+│   │   │           ├── LICENSE-SELECT2.md
+│   │   │           ├── select2.css
+│   │   │           └── select2.min.css
+│   │   ├── img/
+│   │   │   ├── calendar-icons.svg
+│   │   │   ├── icon-addlink.svg
+│   │   │   ├── icon-alert.svg
+│   │   │   ├── icon-calendar.svg
+│   │   │   ├── icon-changelink.svg
+│   │   │   ├── icon-clock.svg
+│   │   │   ├── icon-deletelink.svg
+│   │   │   ├── icon-hidelink.svg
+│   │   │   ├── icon-no.svg
+│   │   │   ├── icon-unknown-alt.svg
+│   │   │   ├── icon-unknown.svg
+│   │   │   ├── icon-viewlink.svg
+│   │   │   ├── icon-yes.svg
+│   │   │   ├── inline-delete.svg
+│   │   │   ├── LICENSE
+│   │   │   ├── README.txt
+│   │   │   ├── search.svg
+│   │   │   ├── selector-icons.svg
+│   │   │   ├── sorting-icons.svg
+│   │   │   ├── tooltag-add.svg
+│   │   │   ├── tooltag-arrowright.svg
+│   │   │   └── gis/
+│   │   │       ├── move_vertex_off.svg
+│   │   │       └── move_vertex_on.svg
+│   │   └── js/
+│   │       ├── actions.js
+│   │       ├── autocomplete.js
+│   │       ├── calendar.js
+│   │       ├── cancel.js
+│   │       ├── change_form.js
+│   │       ├── core.js
+│   │       ├── filters.js
+│   │       ├── inlines.js
+│   │       ├── jquery.init.js
+│   │       ├── nav_sidebar.js
+│   │       ├── popup_response.js
+│   │       ├── prepopulate.js
+│   │       ├── prepopulate_init.js
+│   │       ├── SelectBox.js
+│   │       ├── SelectFilter2.js
+│   │       ├── theme.js
+│   │       ├── unusable_password_field.js
+│   │       ├── urlify.js
+│   │       ├── admin/
+│   │       │   ├── DateTimeShortcuts.js
+│   │       │   └── RelatedObjectLookups.js
+│   │       └── vendor/
+│   │           ├── jquery/
+│   │           │   ├── jquery.js
+│   │           │   ├── jquery.min.js
+│   │           │   └── LICENSE.txt
+│   │           ├── select2/
+│   │           │   ├── LICENSE.md
+│   │           │   ├── select2.full.js
+│   │           │   ├── select2.full.min.js
+│   │           │   └── i18n/
+│   │           │       ├── af.js
+│   │           │       ├── ar.js
+│   │           │       ├── az.js
+│   │           │       ├── bg.js
+│   │           │       ├── bn.js
+│   │           │       ├── bs.js
+│   │           │       ├── ca.js
+│   │           │       ├── cs.js
+│   │           │       ├── da.js
+│   │           │       ├── de.js
+│   │           │       ├── dsb.js
+│   │           │       ├── el.js
+│   │           │       ├── en.js
+│   │           │       ├── es.js
+│   │           │       ├── et.js
+│   │           │       ├── eu.js
+│   │           │       ├── fa.js
+│   │           │       ├── fi.js
+│   │           │       ├── fr.js
+│   │           │       ├── gl.js
+│   │           │       ├── he.js
+│   │           │       ├── hi.js
+│   │           │       ├── hr.js
+│   │           │       ├── hsb.js
+│   │           │       ├── hu.js
+│   │           │       ├── hy.js
+│   │           │       ├── id.js
+│   │           │       ├── is.js
+│   │           │       ├── it.js
+│   │           │       ├── ja.js
+│   │           │       ├── ka.js
+│   │           │       ├── km.js
+│   │           │       ├── ko.js
+│   │           │       ├── lt.js
+│   │           │       ├── lv.js
+│   │           │       ├── mk.js
+│   │           │       ├── ms.js
+│   │           │       ├── nb.js
+│   │           │       ├── ne.js
+│   │           │       ├── nl.js
+│   │           │       ├── pl.js
+│   │           │       ├── ps.js
+│   │           │       ├── pt-BR.js
+│   │           │       ├── pt.js
+│   │           │       ├── ro.js
+│   │           │       ├── ru.js
+│   │           │       ├── sk.js
+│   │           │       ├── sl.js
+│   │           │       ├── sq.js
+│   │           │       ├── sr-Cyrl.js
+│   │           │       ├── sr.js
+│   │           │       ├── sv.js
+│   │           │       ├── th.js
+│   │           │       ├── tk.js
+│   │           │       ├── tr.js
+│   │           │       ├── uk.js
+│   │           │       ├── vi.js
+│   │           │       ├── zh-CN.js
+│   │           │       └── zh-TW.js
+│   │           └── xregexp/
+│   │               ├── LICENSE.txt
+│   │               ├── xregexp.js
+│   │               └── xregexp.min.js
+│   └── testmanager/
+│       ├── css/
+│       │   ├── add.css
+│       │   ├── admin_page.css
+│       │   ├── base.css
+│       │   ├── create_user.css
+│       │   ├── export_html.css
+│       │   ├── history.css
+│       │   ├── instruction.css
+│       │   ├── list.css
+│       │   ├── test_it.css
+│       │   └── view_test.css
+│       ├── images/
+│       │   ├── README.txt
+│       │   └── tvs-logo.png
+│       └── js/
+│           ├── dashboard.js
+│           ├── export_html.js
+│           ├── inline_edit.js
+│           ├── list.js
+│           └── list_state.js
+├── templates/
+│   └── admin/
+│       ├── admin_page.html
+│       ├── base_site.html
+│       ├── change_form.html
+│       ├── change_list.html
+│       ├── login.html
+│       └── testmanager/
+│           ├── projectoverview/
+│           │   └── change_form.html
+│           └── testcaseversion/
+│               └── change_form.html
+├── testcase_project/
+│   ├── __init__.py
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   ├── wsgi.py
+│   └── __pycache__/
+├── testmanager/
+│   ├── __init__.py
+│   ├── admin.py
+│   ├── admin_login.py
+│   ├── admin_site.py
+│   ├── admin_view.py
+│   ├── apps.py
+│   ├── constants.py
+│   ├── decorators.py
+│   ├── excel_export.py
+│   ├── forms.py
+│   ├── logging_utils.py
+│   ├── models.py
+│   ├── services.py
+│   ├── tests.py
+│   ├── urls.py
+│   ├── utils.py
+│   ├── version_service.py
+│   ├── migrations/
+│   │   ├── __init__.py
+│   │   ├── 0001_initial.py
+│   │   └── __pycache__/
+│   ├── static/
+│   │   └── testmanager/
+│   │       ├── css/
+│   │       │   ├── add.css
+│   │       │   ├── admin_custom.css
+│   │       │   ├── admin_page.css
+│   │       │   ├── base.css
+│   │       │   ├── create_user.css
+│   │       │   ├── export_html.css
+│   │       │   ├── history.css
+│   │       │   ├── instruction.css
+│   │       │   ├── list.css
+│   │       │   ├── test_it.css
+│   │       │   └── view_test.css
+│   │       ├── images/
+│   │       │   ├── README.txt
+│   │       │   └── tvs-logo.png
+│   │       └── js/
+│   │           ├── admin_bulk_actions.js
+│   │           ├── dashboard.js
+│   │           ├── export_html.js
+│   │           ├── inline_edit.js
+│   │           ├── list.js
+│   │           └── list_state.js
+│   ├── templates/
+│   │   └── testmanager/
+│   │       ├── add.html
+│   │       ├── admin_page.html
+│   │       ├── base.html
+│   │       ├── create_new_test_instance.html
+│   │       ├── create_testcases.html
+│   │       ├── create_user.html
+│   │       ├── export_html.html
+│   │       ├── history.html
+│   │       ├── home.html
+│   │       ├── input_versions.html
+│   │       ├── instruction.html
+│   │       ├── list.html
+│   │       ├── select_sheet.html
+│   │       ├── test_it.html
+│   │       ├── upload.html
+│   │       └── view_test.html
+│   ├── templatetags/
+│   │   └── __pycache__/
+│   ├── views/
+│   │   ├── __init__.py
+│   │   ├── admin_views.py
+│   │   ├── export_views.py
+│   │   ├── home.py
+│   │   ├── import_views.py
+│   │   ├── testcases.py
+│   │   └── __pycache__/
+│   └── __pycache__/

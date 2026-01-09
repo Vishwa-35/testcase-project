@@ -65,11 +65,84 @@ from .admin_site import custom_admin_site
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# HIDDEN ADMINS - NOT VISIBLE IN ADMIN INDEX
-# These are registered but hidden from the admin index page
+# BASE MODEL ADMIN WITH STANDARD CONFIGURATIONS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class HiddenModelAdmin(admin.ModelAdmin):
+class BaseModelAdmin(admin.ModelAdmin):
+    """
+    Base ModelAdmin class with standard configurations:
+    - Bulk actions enabled (delete_selected)
+    - Consistent list view settings
+    - Role-based action restrictions
+    - Modern UI support
+    """
+    
+    # Enable bulk actions by default
+    actions = ["delete_selected"]
+    actions_on_top = True
+    actions_on_bottom = True
+    
+    # Standard list view settings
+    list_per_page = 50
+    list_max_show_all = 200
+    
+    class Media:
+        css = {
+            'all': ('testmanager/css/admin_custom.css',)
+        }
+        js = ('testmanager/js/admin_bulk_actions.js',)
+    
+    def get_actions(self, request):
+        """
+        Role-based action restrictions.
+        Only managers/superusers can delete.
+        """
+        actions = super().get_actions(request)
+        
+        # Remove delete_selected for non-managers
+        if not (is_manager(request.user) or request.user.is_superuser):
+            if 'delete_selected' in actions:
+                del actions['delete_selected']
+        
+        return actions
+    
+    def delete_selected(self, request, queryset):
+        """
+        Custom bulk delete with confirmation and logging.
+        """
+        if not (is_manager(request.user) or request.user.is_superuser):
+            self.message_user(request, "Only managers can delete records.", level=messages.ERROR)
+            return
+        
+        count = queryset.count()
+        if count == 0:
+            self.message_user(request, "No items selected.", level=messages.WARNING)
+            return
+        
+        # Log deletion
+        for obj in queryset:
+            try:
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action="DELETE",
+                    reference=f"{obj.__class__.__name__} #{obj.id}",
+                    remarks=f"Bulk deleted via admin",
+                    content_type=obj.__class__.__name__,
+                )
+            except Exception:
+                pass  # Don't fail if logging fails
+        
+        queryset.delete()
+        self.message_user(
+            request,
+            f"Successfully deleted {count} item(s).",
+            level=messages.SUCCESS
+        )
+    
+    delete_selected.short_description = "Delete selected items"
+
+
+class HiddenModelAdmin(BaseModelAdmin):
     """Base class for models that should be hidden from admin index."""
     
     def has_module_permission(self, request):
@@ -77,7 +150,7 @@ class HiddenModelAdmin(admin.ModelAdmin):
         return False
 
 
-class TestCaseAdmin(admin.ModelAdmin):
+class TestCaseAdmin(BaseModelAdmin):
     """
     HIDDEN: TestCase is master definition only.
     Not accessible from admin index - only referenced via hierarchy.
@@ -133,7 +206,7 @@ class TestCaseAdmin(admin.ModelAdmin):
         return False
 
 
-class SheetMetaAdmin(admin.ModelAdmin):
+class SheetMetaAdmin(BaseModelAdmin):
     """HIDDEN: SheetMeta is internal metadata only."""
     list_display = ("sheet_name",)
     search_fields = ("sheet_name",)
@@ -264,7 +337,7 @@ class TestExecutionInline(admin.TabularInline):
 # TEST CASE SHEET ADMIN - PRIMARY ENTRY POINT
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class TestCaseSheetAdmin(admin.ModelAdmin):
+class TestCaseSheetAdmin(BaseModelAdmin):
     """
     ═══════════════════════════════════════════════════════════════════════════
     PRIMARY ADMIN ENTRY POINT
@@ -546,7 +619,7 @@ class TestCaseSheetAdmin(admin.ModelAdmin):
 # TEST EXECUTION ADMIN - HIDDEN FROM INDEX, ACCESSIBLE ONLY VIA HIERARCHY
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class TestExecutionAdmin(admin.ModelAdmin):
+class TestExecutionAdmin(BaseModelAdmin):
     """
     HIDDEN: TestExecution is NOT accessible from admin index.
     Executions are accessed ONLY via Sheet → Version hierarchy.
@@ -555,6 +628,7 @@ class TestExecutionAdmin(admin.ModelAdmin):
     (which should be blocked in production).
     """
     list_display = (
+        "id",
         "sheet_display",
         "version_display",
         "test_case_display",
@@ -562,7 +636,23 @@ class TestExecutionAdmin(admin.ModelAdmin):
         "user",
         "executed_at",
     )
+    list_display_links = ("id", "test_case_display")
     ordering = ("sheet__sheet_name", "version__sw_part_number", "-version__app_sw_version")
+    
+    list_filter = (
+        "status",
+        "version__is_locked",
+        "version__is_active",
+        "executed_at",
+    )
+    
+    search_fields = (
+        "test_case__test_case_id",
+        "test_case__base_test_case_id",
+        "version__sw_part_number",
+        "version__app_sw_version",
+        "user__username",
+    )
     
     readonly_fields = (
         "sheet",
@@ -957,7 +1047,7 @@ class TestCaseVersionAdmin(HiddenModelAdmin):
 # PROJECT OVERVIEW ADMIN - MANAGER ONLY
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class ProjectOverviewAdmin(admin.ModelAdmin):
+class ProjectOverviewAdmin(BaseModelAdmin):
     """
     ═══════════════════════════════════════════════════════════════════════════
     MANAGER ONLY: Project Overview Admin
@@ -1174,27 +1264,40 @@ custom_admin_site.register(ProjectOverview, ProjectOverviewAdmin)
 
 # Register additional models (if needed for admin access)
 # TestInstance - Manager only
-class TestInstanceAdmin(admin.ModelAdmin):
-    list_display = ('id', 'is_active', 'created_at')
+class TestInstanceAdmin(BaseModelAdmin):
+    list_display = ('id', 'is_active', 'created_at', 'instance_info')
+    list_display_links = ('id',)
     list_filter = ('is_active', 'created_at')
+    search_fields = ('id',)
+    ordering = ('-created_at',)
     readonly_fields = ('created_at',)
     
     def has_module_permission(self, request):
         """Manager only"""
         return is_manager(request.user) or request.user.is_superuser
+    
+    def instance_info(self, obj):
+        """Display instance information."""
+        if obj.is_active:
+            return format_html('<span style="color: #10B981; font-weight: bold;">✓ ACTIVE</span>')
+        return format_html('<span style="color: #6B7280;">ARCHIVED</span>')
+    instance_info.short_description = "Status"
 
 custom_admin_site.register(TestInstance, TestInstanceAdmin)
 
 # SWVersionMapping - Hidden (internal use)
 class SWVersionMappingAdmin(HiddenModelAdmin):
-    list_display = ('sw_part_number', 'version', 'is_active', 'instance')
-    list_filter = ('is_active', 'sw_part_number')
+    list_display = ('id', 'sw_part_number', 'version', 'is_active', 'instance')
+    list_display_links = ('id', 'sw_part_number')
+    list_filter = ('is_active', 'sw_part_number', 'instance')
+    search_fields = ('sw_part_number', 'version')
+    ordering = ('sw_part_number', '-created_at')
     readonly_fields = ('created_at', 'updated_at')
 
 custom_admin_site.register(SWVersionMapping, SWVersionMappingAdmin)
 
 # ActivityLog - Manager only
-class ActivityLogAdmin(admin.ModelAdmin):
+class ActivityLogAdmin(BaseModelAdmin):
     list_display = ('user', 'action', 'reference', 'content_type', 'timestamp')
     list_filter = ('action', 'content_type', 'timestamp')
     readonly_fields = ('user', 'action', 'reference', 'remarks', 'content_type', 'diff', 'timestamp')
@@ -1217,7 +1320,7 @@ class ActivityLogAdmin(admin.ModelAdmin):
 custom_admin_site.register(ActivityLog, ActivityLogAdmin)
 
 # UserProfile - Manager only
-class UserProfileAdmin(admin.ModelAdmin):
+class UserProfileAdmin(BaseModelAdmin):
     list_display = ('full_name', 'employee_id', 'role', 'user', 'created_at')
     list_filter = ('role', 'created_at')
     search_fields = ('full_name', 'employee_id', 'user__username')

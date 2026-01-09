@@ -446,158 +446,159 @@ def create_new_test_instance(request):
     # The form will load first and show completion status for selection
     
     if request.method == 'GET':
-        # INLINE SELECTION: Show form with dependent dropdowns and completion status
-        active_instance = get_active_instance()
-        
-        # Get all sheets, SW part numbers, versions, and features with completion status
-        from ..services import get_feature_completion
-        
-        # Get all versions
-        versions = TestCaseVersion.objects.filter(instance=active_instance).select_related()
-        
-        # Build data structure for dependent dropdowns
-        sheets_data = []  # List of {sheet_name, sw_part_numbers: [...]}
-        features_data = []  # List of {feature_name, sheet_name, sw_part_number, version, completion: {...}}
-        
-        sheet_set = set()
-        sw_set = set()
-        version_set = set()
-        
-        for version_obj in versions:
-            # Get all sheets for this version
-            sheets = TestCaseSheet.objects.filter(version=version_obj).select_related()
-            
-            for sheet_obj in sheets:
-                sheet_name = sheet_obj.sheet_name
-                sw_part_number = version_obj.sw_part_number
-                app_sw_version = version_obj.app_sw_version
-                
-                sheet_set.add(sheet_name)
-                sw_set.add(sw_part_number)
-                version_set.add((sw_part_number, app_sw_version))
-                
-                # Get all features for this sheet+version combination
-                features = TestCase.objects.filter(
-                    instance=active_instance,
-                    sw_part_number=sw_part_number,
-                    app_sw_version=app_sw_version,
-                    sheet_name=sheet_name
-                ).exclude(feature__isnull=True).exclude(feature__exact="").values_list('feature', flat=True).distinct()
-                
-                for feature_name in features:
-                    # Calculate completion for this feature scope
-                    total_count, completed_count, is_completed = get_feature_completion(
-                        active_instance, version_obj, sheet_obj, feature_name
-                    )
-                    
-                    features_data.append({
-                        'feature_name': feature_name,
-                        'sheet_name': sheet_name,
-                        'sw_part_number': sw_part_number,
-                        'app_sw_version': app_sw_version,
-                        'total_count': total_count,
-                        'completed_count': completed_count,
-                        'is_completed': is_completed,
-                    })
-        
-        # Sort for display
-        sheets_list = sorted(list(sheet_set))
-        sw_list = sorted(list(sw_set))
-        versions_list = sorted([(sw, ver) for sw, ver in version_set])
-        
-        # Convert features_data to JSON for JavaScript
-        features_data_json = json_module.dumps(features_data)
-        
-        # Pre-select if parameters provided (convert to JSON-safe format)
-        selected_sheet = json_module.dumps(sheet_name) if sheet_name else 'null'
-        selected_sw = json_module.dumps(sw_part_number) if sw_part_number else 'null'
-        selected_version = json_module.dumps(app_sw_version) if app_sw_version else 'null'
-        selected_feature = json_module.dumps(feature_name) if feature_name else 'null'
-        
+        # NEW FLOW: Use same APIs as export (get_sheets_api, get_versions_for_sheet_api, get_completed_features_for_sw_api)
+        # Template will use JavaScript to call these APIs dynamically
         # URLs as JSON (no template tags in JavaScript)
         urls_json = json_module.dumps({
             'create_new_test_instance': reverse('create_new_test_instance'),
             'testcase_list': reverse('testcase_list'),
+            'get_sheets_api': reverse('get_sheets_api'),
+            'get_sw_part_numbers_for_sheet_api': reverse('get_sw_part_numbers_for_sheet_api'),
+            'get_completed_features_for_sw_api': reverse('get_completed_features_for_sw_api'),
         })
         
         return render(request, 'testmanager/create_new_test_instance.html', {
-            'sheets_list': sheets_list,
-            'sw_list': sw_list,
-            'versions_list': versions_list,
-            'features_data': features_data_json,  # Pass as JSON string
-            'selected_sheet': selected_sheet,
-            'selected_sw': selected_sw,
-            'selected_version': selected_version,
-            'selected_feature': selected_feature,
             'urls_json': urls_json,  # Pass URLs as JSON string
         })
     
     # POST: Process version creation
     try:
         import json
+        from ..models import SWVersionMapping
         data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
         
-        # Get feature scope from form (required) - support both single feature (backward compat) and multiple features
-        feature_names = data.get('features', [])
-        if not feature_names:
-            # Backward compatibility: check for single 'feature' field
-            single_feature = data.get('feature', '').strip()
-            if single_feature:
-                feature_names = [single_feature]
+        # NEW CONTRACT: Accept sw_part_numbers array and version_mappings dictionary
+        # INSTANCE RULE: Ask version ONCE per sw_part_number
+        # Popup must list UNIQUE sw_part_numbers and ask version for each
+        sheet_name = data.get('sheet', '').strip()
+        sw_part_numbers = data.get('sw_part_numbers', [])  # Array of SW Part Numbers
+        version_mappings_input = data.get('version_mappings', {})  # Dictionary: {sw_part_number: version}
+        feature_names = data.get('features', [])  # Array of feature names (optional - not required for instance creation)
         
         # Convert to list if it's a string (backward compatibility)
+        if isinstance(sw_part_numbers, str):
+            sw_part_numbers = [sw_part_numbers] if sw_part_numbers else []
         if isinstance(feature_names, str):
             feature_names = [feature_names] if feature_names else []
+        if isinstance(version_mappings_input, str):
+            try:
+                import json
+                version_mappings_input = json.loads(version_mappings_input)
+            except:
+                version_mappings_input = {}
         
-        sheet_name = data.get('sheet', '').strip() or sheet_name
-        sw_part_number = data.get('sw', '').strip() or sw_part_number
-        app_sw_version = data.get('version', '').strip() or app_sw_version
-        new_version = data.get('new_version', '').strip()
-        
-        # Validate feature scope is selected
-        if not (feature_names and len(feature_names) > 0 and sheet_name and sw_part_number and app_sw_version):
+        # Validate inputs
+        if not sheet_name:
             return JsonResponse({
                 'success': False,
-                'error': 'Please select at least one feature, and provide Sheet, SW Part Number, and Version.'
+                'error': 'Sheet name is required.'
             })
         
-        # Resolve version and sheet objects
-        version_obj = TestCaseVersion.objects.filter(
-            instance=active_instance,
-            sw_part_number=sw_part_number,
-            app_sw_version=app_sw_version
-        ).first()
-        
-        if not version_obj:
+        if not sw_part_numbers or len(sw_part_numbers) == 0:
             return JsonResponse({
                 'success': False,
-                'error': f'Version "{app_sw_version}" not found for SW Part Number "{sw_part_number}".'
+                'error': 'Please select at least one SW Part Number.'
             })
         
-        sheet_obj = TestCaseSheet.objects.filter(
-            version=version_obj,
-            sheet_name=sheet_name
-        ).first()
-        
-        if not sheet_obj:
-            return JsonResponse({
-                'success': False,
-                'error': f'Sheet "{sheet_name}" not found for version "{app_sw_version}".'
-            })
-        
-        # Validate all selected features are completed before allowing instance creation
-        from ..services import get_feature_completion
-        incomplete_features = []
-        for feature_name in feature_names:
-            if not feature_name or not feature_name.strip():
+        # INSTANCE RULE: Validate that version is provided for each SW Part Number
+        version_mappings = {}
+        missing_versions = []
+        for sw_part_number in sw_part_numbers:
+            sw_part_number = sw_part_number.strip() if sw_part_number else ''
+            if not sw_part_number:
                 continue
-            feature_name = feature_name.strip()
-            total_count, completed_count, is_completed = get_feature_completion(
-                active_instance, version_obj, sheet_obj, feature_name
-            )
             
-            if not is_completed:
-                incomplete_features.append(f'{feature_name} ({completed_count}/{total_count} tests executed)')
+            version = version_mappings_input.get(sw_part_number, '').strip() if isinstance(version_mappings_input, dict) else ''
+            if not version:
+                missing_versions.append(sw_part_number)
+            else:
+                version_mappings[sw_part_number] = version
+        
+        if missing_versions:
+            return JsonResponse({
+                'success': False,
+                'error': f'Please enter a version for each SW Part Number. Missing versions for: {", ".join(missing_versions)}'
+            })
+        
+        # Auto-detect current active version for each SW Part Number
+        sw_version_map = {}  # Map sw_part_number -> {version, version_obj, sheet_obj}
+        incomplete_features = []
+        from ..services import get_feature_completion
+        
+        for sw_part_number in sw_part_numbers:
+            if not sw_part_number or not sw_part_number.strip():
+                continue
+            
+            sw_part_number = sw_part_number.strip()
+            
+            # Get current active version for this SW Part Number
+            mapping = SWVersionMapping.objects.filter(
+                instance=active_instance,
+                sw_part_number=sw_part_number,
+                is_active=True
+            ).first()
+            
+            if not mapping:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'No active version found for SW Part Number "{sw_part_number}".'
+                })
+            
+            old_version = mapping.version
+            
+            # Get version object
+            version_obj = TestCaseVersion.objects.filter(
+                instance=active_instance,
+                sw_part_number=sw_part_number,
+                app_sw_version=old_version
+            ).first()
+            
+            if not version_obj:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Version "{old_version}" not found for SW Part Number "{sw_part_number}".'
+                })
+            
+            # Get sheet object
+            sheet_obj = TestCaseSheet.objects.filter(
+                version=version_obj,
+                sheet_name=sheet_name
+            ).first()
+            
+            if not sheet_obj:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Sheet "{sheet_name}" not found for SW Part Number "{sw_part_number}".'
+                })
+            
+            sw_version_map[sw_part_number] = {
+                'version': old_version,
+                'version_obj': version_obj,
+                'sheet_obj': sheet_obj
+            }
+            
+            # Check completion for each feature
+            for feature_name in feature_names:
+                if not feature_name or not feature_name.strip():
+                    continue
+                feature_name = feature_name.strip()
+                
+                # Check if feature exists for this SW/version combination
+                feature_exists = TestCase.objects.filter(
+                    instance=active_instance,
+                    sheet_name=sheet_name,
+                    sw_part_number=sw_part_number,
+                    app_sw_version=old_version,
+                    feature=feature_name
+                ).exists()
+                
+                if feature_exists:
+                    total_count, completed_count, is_completed = get_feature_completion(
+                        active_instance, version_obj, sheet_obj, feature_name
+                    )
+                    
+                    if not is_completed:
+                        incomplete_features.append(f'{feature_name} ({completed_count}/{total_count} tests executed) for {sw_part_number}')
         
         if incomplete_features:
             return JsonResponse({
@@ -605,192 +606,88 @@ def create_new_test_instance(request):
                 'error': f'The following features are not fully completed: {", ".join(incomplete_features)}. All tests must be executed (PASS/FAIL) and version must be locked before creating a new instance.'
             })
         
-        # Get new version number
-        if not new_version:
+        # Validate that new versions do NOT already exist for each SW Part Number
+        existing_versions = []
+        for sw_part_number, new_version in version_mappings.items():
+            if not sw_part_number or not new_version:
+                continue
+            
+            # Check if version already exists in current instance
+            existing_version = TestCaseVersion.objects.filter(
+                instance=active_instance,
+                sw_part_number=sw_part_number,
+                app_sw_version=new_version
+            ).first()
+            
+            if existing_version:
+                existing_versions.append(f'{sw_part_number} (version {new_version})')
+        
+        if existing_versions:
             return JsonResponse({
                 'success': False,
-                'error': 'Please enter a new version number.'
+                'error': f'The following SW Part Number(s) already have these versions: {", ".join(existing_versions)}. Please enter different version numbers.'
             })
-        
-        # FEATURE-WISE: Only create version mapping for this SW part number
-        version_mappings = {sw_part_number: new_version}
         
         with transaction.atomic():  # type: ignore[assignment]
             # Get current active instance
             current_instance = get_active_instance()
             
-            # FEATURE-WISE: Filter test cases and executions by features (REQUIRED)
-            # Instance creation is now feature-scoped, not global
-            test_cases = TestCase.objects.filter(instance=current_instance)
-            executions = TestExecution.objects.filter(instance=current_instance).select_related('test_case')
+            # NEW LOGIC: Filter test cases and executions by selected features and SW Part Numbers
+            # Only clone test cases for selected features under selected SW Part Numbers (using current active versions)
+            selected_sw_part_numbers = list(sw_version_map.keys())
+            selected_old_versions = [info['version'] for info in sw_version_map.values()]
             
-            # FEATURE-WISE: Always filter to specific features (required for feature-scoped creation)
-            if feature_names and sheet_name and sw_part_number and app_sw_version:
-                # FEATURE-WISE: Filter to selected features only
-                test_cases = test_cases.filter(
-                    feature__in=feature_names,
-                    sheet_name=sheet_name,
-                    sw_part_number=sw_part_number,
-                    app_sw_version=app_sw_version
-                )
-                
-                # Resolve version and sheet objects for execution filtering
-                version_obj = TestCaseVersion.objects.filter(
-                    instance=current_instance,
-                    sw_part_number=sw_part_number,
-                    app_sw_version=app_sw_version
-                ).first()
-                
-                if version_obj:
-                    sheet_obj = TestCaseSheet.objects.filter(
-                        version=version_obj,
-                        sheet_name=sheet_name
-                    ).first()
-                    
-                    if sheet_obj:
-                        executions = executions.filter(
-                            version=version_obj,
-                            sheet=sheet_obj,
-                            test_case__feature__in=feature_names
-                        )
-            
-            # STRICT: Create snapshot with all execution data (preserve all existing data permanently)
-            # Previous version data must remain untouched and intact
-            # This snapshot preserves execution data: status, reports, comments, execution results
-            execution_data = []
-            for exec in executions:
-                tc = exec.test_case
-                display_requirement_id = get_requirement_id(tc.test_case_id, tc.requirement_id)
-                
-                exec_dict = {
-                    'test_case_id': tc.test_case_id,
-                    'test_case_db_id': tc.id,
-                    'sheet_name': tc.sheet_name,
-                    'sl_no': tc.sl_no,
-                    'sw_part_number': tc.sw_part_number,
-                    'feature': tc.feature,
-                    'requirement_id': display_requirement_id,
-                    'requirement_description': tc.requirement_description,
-                    'test_case_summary': tc.test_case_summary,
-                    'pre_conditions': tc.pre_conditions,
-                    'inputs': tc.inputs,
-                    'periodic_time': tc.periodic_time,
-                    'test_steps': tc.test_steps,
-                    'expected_result': tc.expected_result,
-                    'app_sw_version': tc.app_sw_version,
-                    'status': tc.status,
-                    'reports': tc.reports,
-                    'comments': tc.comments,
-                    'execution_status': exec.status,
-                    'execution_reports': exec.reports,
-                    'execution_comments': exec.comments,
-                    'execution_sw_part_number': exec.sw_part_number,
-                    'execution_app_sw_version': exec.app_sw_version,
-                    'executed_at': exec.executed_at.isoformat() if exec.executed_at else None,
-                    'executed_by': exec.user.username if exec.user else None,
-                }
-                execution_data.append(exec_dict)
-            
-            # Calculate snapshot statistics (feature-scoped if applicable)
-            total_count = test_cases.count()
-            executed_count = executions.exclude(status__isnull=True).exclude(status__exact="").count()
-            total_passed = sum(1 for e in executions if e.status and e.status.upper() == 'PASS')
-            total_failed = sum(1 for e in executions if e.status and e.status.upper() == 'FAIL')
-            total_not_executed = total_count - executed_count
-            
-            # Generate export_id
-            last_snapshot = TestExecutionSnapshot.objects.order_by('-exported_at').first()
-            if last_snapshot and last_snapshot.export_id:
-                try:
-                    last_num = int(last_snapshot.export_id.split('_')[-1])
-                    export_id = f"export_{last_num + 1}"
-                except (ValueError, IndexError):
-                    export_id = f"export_{TestExecutionSnapshot.objects.count() + 1}"
-            else:
-                export_id = "export_1"
-            
-            # FEATURE-WISE: Create snapshot name with feature info if applicable
-            snapshot_name = f"Instance {current_instance.id} - {current_instance.created_at.strftime('%Y-%m-%d %H:%M')}"
-            if feature_names:
-                if len(feature_names) == 1:
-                    snapshot_name += f" - Feature: {feature_names[0]}"
-                else:
-                    snapshot_name += f" - Features: {', '.join(feature_names)}"
-            
-            snapshot = TestExecutionSnapshot.objects.create(
+            # Filter test cases: selected sheet, selected SW part numbers, selected old versions, selected features
+            test_cases = TestCase.objects.filter(
                 instance=current_instance,
-                export_id=export_id,
-                snapshot_name=snapshot_name,
-                exported_by=request.user,
-                execution_data=execution_data,
-                total_test_cases=total_count,
-                total_executed=executed_count,
-                total_passed=total_passed,
-                total_failed=total_failed,
-                total_not_executed=total_not_executed,
+                sheet_name=sheet_name,
+                sw_part_number__in=selected_sw_part_numbers,
+                app_sw_version__in=selected_old_versions,
+                feature__in=feature_names
             )
             
-            # Get old active versions BEFORE archiving (needed for test_case_id processing)
-            old_active_versions = {}
-            for sw_part_number in version_mappings.keys():
-                old_mapping = SWVersionMapping.objects.filter(
-                    instance=current_instance,
-                    sw_part_number=sw_part_number,
-                    is_active=True
-                ).first()
-                if old_mapping:
-                    old_active_versions[sw_part_number] = old_mapping.version
+            # Filter executions: get all executions for the selected test cases
+            test_case_ids = list(test_cases.values_list('id', flat=True))
+            executions = TestExecution.objects.filter(
+                instance=current_instance,
+                test_case_id__in=test_case_ids
+            ).select_related('test_case')
             
-            # FEATURE-WISE: Only archive instance if ALL features are completed (backward compatibility)
-            # If feature-scoped, create new instance without archiving old one
-            # This allows parallel testing of different features
-            if feature_names:
-                # FEATURE-WISE: Create new instance WITHOUT archiving old one
-                # Old instance remains active for other features
-                new_instance = TestInstance.objects.create(is_active=True)
-            else:
-                # GLOBAL: Archive current instance (backward compatibility)
-                # STRICT: Archive current instance (preserve all data permanently)
-                # Previous version data remains untouched - status, reports, comments preserved
-                # Old versions are marked as inactive but data is never modified or overwritten
-                current_instance.is_active = False
-                current_instance.save()
-                
-                # STRICT: Mark all previous versions as inactive (data remains preserved)
-                # Previous versions retain their original status, reports, comments, execution results
-                # Old version data is never refreshed, reset, or overwritten
-                SWVersionMapping.objects.filter(instance=current_instance).update(is_active=False)
-                
-                # Create new active instance
-                new_instance = TestInstance.objects.create(is_active=True)
+            # REMOVED: Snapshot system completely removed
+            # No snapshot creation, no DB reset, no auto-clear logic
+            
+            # INSTANCE RULE: Create new instance and deactivate old one
+            # Old instance -> is_active=False (deactivate BEFORE creating new one to avoid conflicts)
+            # New instance -> is_active=True
+            # status/reports/comments reset ONLY during instance creation (new executions start empty)
+            
+            # Deactivate old instance first (only one instance can be active at a time)
+            TestInstance.objects.filter(is_active=True).update(is_active=False)
+            
+            # Create new active instance
+            new_instance = TestInstance.objects.create(is_active=True)
             
             # Create new version records and test cases for new instance
+            # Process each selected SW Part Number separately
             for sw_part_number, new_version in version_mappings.items():
-                # CRITICAL: Mark all previous versions of this SW Part Number as inactive
-                # This ensures only ONE active version per SW Part Number per instance
-                TestCaseVersion.objects.filter(
-                    instance=current_instance,
-                    sw_part_number=sw_part_number,
-                    is_active=True
-                ).update(is_active=False)
+                # Get old version from sw_version_map (auto-detected)
+                if sw_part_number not in sw_version_map:
+                    continue
                 
-                # CRITICAL: Create EXACTLY ONE TestCaseVersion record per SW Part Number
-                # This version applies to ALL test cases with this SW Part Number
-                new_version_obj, created = TestCaseVersion.objects.get_or_create(
+                version_info = sw_version_map[sw_part_number]
+                old_version = version_info['version']
+                version_obj = version_info['version_obj']
+                
+                # CRITICAL: Create EXACTLY ONE TestCaseVersion record per SW Part Number for new instance
+                # This version applies to ALL test cases with this SW Part Number in the new instance
+                # Note: Version existence was already validated above, so this should always create a new one
+                new_version_obj = TestCaseVersion.objects.create(
                     instance=new_instance,
                     sw_part_number=sw_part_number,
                     app_sw_version=new_version,
-                    defaults={
-                        'is_active': True,
-                        'is_locked': False
-                    }
+                    is_active=True,
+                    is_locked=False
                 )
-                
-                # If version already exists, ensure it's active
-                if not created:
-                    new_version_obj.is_active = True
-                    new_version_obj.is_locked = False
-                    new_version_obj.save()
                 
                 # Create new version mapping (is_active=True) for backward compatibility
                 SWVersionMapping.objects.create(
@@ -800,51 +697,55 @@ def create_new_test_instance(request):
                     is_active=True
                 )
                 
-                # FEATURE-WISE: Get test cases for this SW part number
-                # If feature-scoped, only get test cases for selected features
-                # Otherwise, get all test cases (backward compatibility)
-                old_test_cases = test_cases.filter(sw_part_number=sw_part_number)
+                # NEW LOGIC: Get test cases ONLY for this SW part number, selected features, and old version
+                old_test_cases = test_cases.filter(
+                    sw_part_number=sw_part_number,
+                    app_sw_version=old_version,
+                    feature__in=feature_names
+                )
                 
-                if feature_names:
-                    # FEATURE-WISE: Filter to selected features only
-                    old_test_cases = old_test_cases.filter(feature__in=feature_names)
-                
-                # Get old version for this SW part number (if exists)
-                old_version = old_active_versions.get(sw_part_number)
-                
-                # Get all unique sheet names for this SW Part Number
+                # Get all unique sheet names for these test cases
                 sheet_names = set(old_test_cases.values_list('sheet_name', flat=True).distinct())
                 
                 # Create TestCaseSheet records for this version (one per sheet)
-                for sheet_name in sheet_names:
-                    if sheet_name:
+                for sheet_name_item in sheet_names:
+                    if sheet_name_item:
                         TestCaseSheet.objects.get_or_create(
                             version=new_version_obj,
-                            sheet_name=sheet_name
+                            sheet_name=sheet_name_item
                         )
                 
                 # Create new test cases with new version
+                # CLONE all test case data from old version to new version
                 new_test_cases = []
                 for old_tc in old_test_cases:
                     # Build new test_case_id with new version
-                    base_test_case_id = old_tc.test_case_id
-                    # Remove old version suffix if exists
-                    if old_version and base_test_case_id.endswith(f"_{old_version}"):
-                        base_test_case_id = base_test_case_id[:-len(f"_{old_version}")]
+                    # Use base_test_case_id if available, otherwise derive from test_case_id
+                    if hasattr(old_tc, 'base_test_case_id') and old_tc.base_test_case_id:
+                        base_test_case_id_value = old_tc.base_test_case_id
+                    else:
+                        # Fallback: derive base from test_case_id
+                        base_test_case_id_value = old_tc.test_case_id
+                        # Remove old version suffix if exists
+                        if old_version and base_test_case_id_value.endswith(f"_{old_version}"):
+                            base_test_case_id_value = base_test_case_id_value[:-len(f"_{old_version}")]
                     
-                    new_test_case_id = f"{base_test_case_id}_{new_version}" if new_version else base_test_case_id
+                    new_test_case_id = f"{base_test_case_id_value}_{new_version}" if new_version else base_test_case_id_value
                     
-                    # Check if new test case already exists
+                    # Check if new test case already exists (by unique constraint: instance + base_test_case_id + app_sw_version)
                     if TestCase.objects.filter(
                         instance=new_instance,
-                        test_case_id=new_test_case_id
+                        base_test_case_id=base_test_case_id_value,
+                        app_sw_version=new_version
                     ).exists():
                         continue
                     
-                    # STRICT: Create new test case with new version
-                    # Previous version test case data remains untouched and preserved
-                    # Execution data (status, reports, comments) is NOT copied from previous versions
-                    # New version starts with empty execution fields - old version data stays intact
+                    # CLONE: Create new test case by copying ALL fields from old version
+                    # CRITICAL: Old version test case data remains COMPLETELY UNCHANGED in old instance
+                    # - Old test cases are NOT modified
+                    # - Old execution data (status, reports, comments) is NOT modified
+                    # - Old version data stays intact and visible for comparison
+                    # New version starts with EMPTY execution fields (status, reports, comments)
                     new_tc = TestCase(
                         instance=new_instance,
                         sheet_name=old_tc.sheet_name,
@@ -852,20 +753,22 @@ def create_new_test_instance(request):
                         sw_part_number=sw_part_number,
                         feature=old_tc.feature,
                         requirement_id=old_tc.requirement_id,
-                        app_sw_version=new_version,
+                        app_sw_version=new_version,  # USER-ENTERED VERSION
                         requirement_description=old_tc.requirement_description,
-                        test_case_id=new_test_case_id,
+                        base_test_case_id=base_test_case_id_value,  # Copy base_test_case_id
+                        test_case_id=new_test_case_id,  # New versioned test_case_id
                         test_case_summary=old_tc.test_case_summary,
                         pre_conditions=old_tc.pre_conditions,
                         inputs=old_tc.inputs,
                         periodic_time=old_tc.periodic_time,
                         test_steps=old_tc.test_steps,
                         expected_result=old_tc.expected_result,
-                        status="",  # STRICT: Reset status for new version - do NOT copy from old version
-                        reports="",  # STRICT: Reset reports for new version - do NOT copy from old version
-                        comments="",  # STRICT: Reset comments for new version - do NOT copy from old version
-                )
-                new_test_cases.append(new_tc)
+                        # Execution fields are EMPTY for new version (not copied from old)
+                        status="",  # EMPTY - new version starts clean
+                        reports="",  # EMPTY - new version starts clean
+                        comments="",  # EMPTY - new version starts clean
+                    )
+                    new_test_cases.append(new_tc)
                 
                 # Bulk create new test cases for this SW Part Number
                 if new_test_cases:
@@ -901,7 +804,7 @@ def create_new_test_instance(request):
                                 TestExecution(
                                     instance=new_instance,
                                     test_case=new_tc,
-                                    version=new_version_obj,  # CRITICAL: Link to TestCaseVersion (not just app_sw_version)
+                                    version=new_version_obj,  # CRITICAL: Link to TestCaseVersion
                                     sheet=sheet_obj,  # CRITICAL: Link to TestCaseSheet
                                     sw_part_number=sw_part_number,
                                     app_sw_version=new_version,  # For backward compatibility
@@ -919,13 +822,13 @@ def create_new_test_instance(request):
                 user=request.user,
                 action="EDIT",
                 reference=f"Instance {current_instance.id} → {new_instance.id}",
-                remarks=f"Created new test instance. Archived instance {current_instance.id}, created instance {new_instance.id}",
+                remarks=f"Created new test instance for features: {', '.join(feature_names)}. Instance {new_instance.id} is now active.",
                 content_type="System",
             )
         
         return JsonResponse({
             'success': True,
-            'message': f'New test instance created successfully. Instance {current_instance.id} archived, Instance {new_instance.id} is now active.',
+            'message': f'New test instance created successfully for selected features. Instance {new_instance.id} is now active.',
             'new_instance_id': new_instance.id,
             'redirect_url': reverse('testcase_list')
         })

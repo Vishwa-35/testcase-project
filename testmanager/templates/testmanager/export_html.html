@@ -43,18 +43,8 @@
                                 <div class="small">{% if all_completed %}{{ executed_count }}/{{ total_count }} tests executed {% else %}{{ executed_count }}/{{ total_count }} tests executed - Complete all tests to enable snapshot creation{% endif %}</div>
                             </div>
                         </div>
-                        {% if all_completed and is_manager and user.is_authenticated %}
-                        <div class="mt-2">
-                            <a
-                                href="{% url 'create_new_test_instance' %}"
-                                class="btn btn-sm btn-success"
-                                onclick="return confirm('This will freeze the current active version as a historical snapshot and redirect you to create a new test instance. Continue?');"
-                            >
-                                <i class="bi bi-save me-1"></i>
-                                Create Snapshot & Reset for Next Cycle
-                            </a>
-                        </div>
-                        {% endif %}
+                        {# REMOVED: Snapshot button completely removed #}
+                        {# Exports are READ-ONLY, no snapshot creation #}
                     </div>
                     {% endif %}
                 </div>

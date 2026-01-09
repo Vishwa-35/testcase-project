@@ -403,66 +403,38 @@ def home(request):
         sw_raw = TestCase.objects.filter(instance=active_instance).values_list("sw_part_number", flat=True)
         sw_list = sorted(set([str(s).strip() for s in sw_raw if s and str(s).strip()]))
 
-    # ROLE-BASED VERSION VISIBILITY: Version list
-    # Managers: Show ALL versions (latest, executed, old) - can access history
-    # Non-managers: Show ONLY active versions (is_active=True) - single version experience
+    # BUG FIX: Version list - OLD VERSIONS NEVER shown in dropdowns (requirement #11)
+    # Live UI (/home, /testcases/) → ACTIVE INSTANCE ONLY, ACTIVE VERSIONS ONLY
+    # History page (separate) shows old instances (read-only) - requirement #7
+    # Even managers only see active versions in main UI dropdowns
     version_list = []
     if selected_sheet:
-        # PART 1 & 6: Fetch versions based on user role
         if selected_sw:
-            if is_manager_check:
-                # Manager: Get ALL versions from TestCase in active instance, ordered newest → oldest
-                # STRICT: Do NOT use sheet_name - filter via base_qs which respects sheet selection
-                # STRICT: app_sw_version does NOT exist on TestCase - use versions__app_sw_version relationship
-                # Get versions from TestCaseVersion via relationship
-                # TODO: base_qs.filter(sw_part_number=selected_sw).values_list("versions__app_sw_version", flat=True)
-                # For now, get versions from SWVersionMapping instead
-                testcase_versions = set()
-                mapping = SWVersionMapping.objects.filter(
-                    instance=active_instance,
-                    sw_part_number=selected_sw
-                ).order_by('-updated_at').values_list('version', flat=True).distinct()
-                testcase_versions = set(mapping)
-                version_list = sort_versions(testcase_versions)
-            else:
-                # Non-manager: Get active version only
-                mapping = SWVersionMapping.objects.filter(
-                    instance=active_instance,
-                    sw_part_number=selected_sw,
-                    is_active=True
-                ).first()
-                if mapping:
-                    version_list = [mapping.version]
+            # Get active version only for selected SW
+            # BUG FIX: Only show active versions, even for managers
+            mapping = SWVersionMapping.objects.filter(
+                instance=active_instance,
+                sw_part_number=selected_sw,
+                is_active=True  # BUG FIX: Only active versions
+            ).first()
+            if mapping:
+                version_list = [mapping.version]
         else:
-            if is_manager_check:
-                # Manager: Get ALL versions from TestCase in active instance (all SW part numbers)
-                # STRICT: Do NOT use sheet_name - filter via base_qs which respects sheet selection
-                # STRICT: app_sw_version does NOT exist on TestCase - use versions__app_sw_version relationship
-                # Get versions from TestCaseVersion via relationship
-                # TODO: base_qs.values_list("versions__app_sw_version", flat=True).distinct()
-                # For now, get versions from SWVersionMapping instead
-                testcase_versions = set()
-                mappings = SWVersionMapping.objects.filter(
-                    instance=active_instance
-                ).values_list('version', flat=True).distinct()
-                testcase_versions = set(mappings)
-                version_list = sort_versions(testcase_versions)
-            else:
-                # Non-manager: Get active versions for all SW part numbers in this sheet
-                # STRICT: Do NOT use sheet_name - filter via base_qs which respects sheet selection
-                sw_numbers = base_qs.values_list('sw_part_number', flat=True).distinct()
-                
-                active_versions = set()
-                for sw_num in sw_numbers:
-                    if sw_num:
-                        mapping = SWVersionMapping.objects.filter(
-                            instance=active_instance,
-                            sw_part_number=sw_num,
-                            is_active=True
-                        ).first()
-                        if mapping:
-                            active_versions.add(mapping.version)
-                version_list = sort_versions(active_versions)
+            # Get active versions for all SW part numbers in this sheet
+            # BUG FIX: Only show active versions, even for managers
+            sw_numbers = base_qs.values_list('sw_part_number', flat=True).distinct()
+            
+            active_versions = set()
+            for sw_num in sw_numbers:
+                if sw_num:
+                    mapping = SWVersionMapping.objects.filter(
+                        instance=active_instance,
+                        sw_part_number=sw_num,
+                        is_active=True  # BUG FIX: Only active versions
+                    ).first()
+                    if mapping:
+                        active_versions.add(mapping.version)
+            version_list = sort_versions(active_versions)
     # If no sheet selected, don't show versions (user must select sheet first)
 
     # --- Get sheet content when sheet is selected --- (active instance only)

@@ -37,6 +37,18 @@ logger = logging.getLogger(__name__)
 # -------------------------------------------------------------------------------------
 @login_required
 def upload_excel(request):
+    """
+    Excel Upload View
+    
+    PERMISSIONS: Manager only (superuser)
+    TESTERS CANNOT upload Excel.
+    """
+    # PERMISSION CHECK: Manager only
+    if not request.user.is_superuser:
+        from django.contrib import messages
+        messages.error(request, "Permission denied. Only managers can upload Excel files.")
+        return redirect("home")
+    
     if request.method == "POST":
         file = request.FILES.get("excel_file")
         if not file or not file.name.endswith(".xlsx"):
@@ -62,9 +74,20 @@ def upload_excel(request):
     return render(request, "testmanager/upload.html")
 
 
-@permission_required("testmanager.change_testcase", raise_exception=True)
+@login_required
 def input_versions(request):
-    """Extract SW part numbers from selected sheets and ask for versions"""
+    """
+    Extract SW part numbers from selected sheets and ask for versions
+    
+    PERMISSIONS: Manager only (superuser)
+    TESTERS CANNOT upload Excel.
+    """
+    # PERMISSION CHECK: Manager only
+    if not request.user.is_superuser:
+        from django.contrib import messages
+        messages.error(request, "Permission denied. Only managers can upload Excel files.")
+        return redirect("home")
+    
     if request.method != "POST":
         return redirect("upload_excel")
 
@@ -135,8 +158,25 @@ def input_versions(request):
 # -------------------------------------------------------------------------------------
 # IMPORT SELECTED SHEETS (MULTIPLE)
 # -------------------------------------------------------------------------------------
-@permission_required("testmanager.change_testcase", raise_exception=True)
+@login_required
 def import_excel(request):
+    """
+    Import Excel file with test cases
+    
+    PERMISSIONS: Manager only (superuser)
+    TESTERS CANNOT upload Excel.
+    
+    VERSION RULES:
+    - Version asked ONCE per sw_part_number in popup
+    - Apply same version to all rows of that SW Part Number
+    - Save rows ONLY to active instance + entered version
+    """
+    # PERMISSION CHECK: Manager only
+    if not request.user.is_superuser:
+        from django.contrib import messages
+        messages.error(request, "Permission denied. Only managers can upload Excel files.")
+        return redirect("home")
+    
     if request.method != "POST":
         return redirect("upload_excel")
 
@@ -269,6 +309,9 @@ def import_excel(request):
             sheet_objects[(sw_part_number, mapped_version)] = sheet_obj
 
         # Process rows for this sheet
+        # Track sl_no per sw_part_number for recalculation
+        sw_sl_no_counters = {}  # Map sw_part_number -> current max sl_no
+        
         for row in ws.iter_rows(min_row=DATA_START, values_only=True):
             if not any(row):
                 continue
@@ -278,8 +321,8 @@ def import_excel(request):
 
             for idx, field in zip(mapped_indexes, mapped_fields):
                 val = row[idx] if idx < len(row) else ""
-                # CRITICAL: sl_no must be persisted during Excel import
-                row_data[field] = clean_slno(val) if field == "sl_no" else clean(val)
+                # DO NOT use sl_no from Excel - we'll recalculate it per sw_part_number
+                row_data[field] = clean(val) if field != "sl_no" else ""
 
             # Read base_test_case_id from Excel (this is the original ID without version suffix)
             base_tcid = (row_data.get("test_case_id") or "").strip()
@@ -310,12 +353,34 @@ def import_excel(request):
             # Generate versioned test_case_id
             versioned_tcid = f"{base_tcid}_{mapped_version}" if mapped_version else base_tcid
             
+            # CRITICAL: Recalculate sl_no per sw_part_number (ignore Excel sl_no)
+            # sl_no is scoped ONLY to sw_part_number (not sheet/version/feature)
+            from ..utils import get_next_sl_no_for_sw_part_number
+            # Get next sl_no for this sw_part_number, considering already processed rows in this batch
+            if sw_part_number not in sw_sl_no_counters:
+                # First time seeing this sw_part_number in this batch - get max from DB
+                from django.db.models import Max
+                max_result = TestCase.objects.filter(
+                    instance=active_instance,
+                    sw_part_number=sw_part_number
+                ).exclude(sl_no__isnull=True).exclude(sl_no__exact="").aggregate(
+                    max_sl_no=Max('sl_no')
+                )
+                max_sl_no = max_result.get('max_sl_no')
+                try:
+                    sw_sl_no_counters[sw_part_number] = int(max_sl_no) if max_sl_no else 0
+                except (ValueError, TypeError):
+                    sw_sl_no_counters[sw_part_number] = 0
+            
+            # Increment counter for this sw_part_number
+            sw_sl_no_counters[sw_part_number] += 1
+            row_data["sl_no"] = str(sw_sl_no_counters[sw_part_number])
+            
             # CRITICAL: sl_no must be stored in TestCase (master definition)
             # sl_no must be immutable across versions
             row_data["sheet_name"] = clean_sheet
             row_data["base_test_case_id"] = base_tcid  # Store original ID
             row_data["test_case_id"] = versioned_tcid  # Store versioned ID
-            # CRITICAL: Ensure sl_no is persisted (already set above via clean_slno)
             existing_keys.add((base_tcid, mapped_version))  # Track for duplicate detection
             
             # Remove app_sw_version from row_data if present (we use mapped version instead)

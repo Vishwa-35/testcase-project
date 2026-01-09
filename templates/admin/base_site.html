@@ -1,0 +1,39 @@
+{% extends "admin/base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+<div id="branding">
+    <h1 id="site-name">
+        <a href="{% url 'admin:index' %}">
+            <span style="display: inline-flex; align-items: center; gap: 10px;">
+                <span style="font-size: 24px;">📊</span>
+                <span>{{ site_header|default:_('Django administration') }}</span>
+            </span>
+        </a>
+    </h1>
+</div>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'testmanager/css/admin_custom.css' %}">
+{% endblock %}
+
+{% block footer %}
+<div id="footer" style="background: #1F2937; color: #D1D5DB; padding: 16px 24px; text-align: center; font-size: 13px; border-top: 2px solid #374151;">
+    <p style="margin: 0;">
+        <strong>Test Case Management System</strong> | 
+        Powered by Django Admin | 
+        {% now "Y" %}
+    </p>
+</div>
+{% endblock %}
+

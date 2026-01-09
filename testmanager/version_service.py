@@ -264,12 +264,14 @@ def can_user_execute_version(user, version_obj):
 
 def sort_test_cases_by_version(test_cases):
     """
-    Sort test cases by: Sheet → Version (newest first) → id (ascending).
+    Sort test cases by: SW Part Number → Version (newest first) → id (ascending).
     
     RISK REMOVAL: Replaces duplicated sort_test_cases_by_version() function.
     
     STRICT: sl_no does NOT exist on TestCase - removed after hierarchy refactor.
     Use id (primary key) instead for consistent ordering.
+    
+    SL.NO ordering must be based ONLY on SW Part Number, not sheet_name.
     
     Args:
         test_cases: List or queryset of TestCase objects
@@ -278,9 +280,9 @@ def sort_test_cases_by_version(test_cases):
         list: Sorted list of test cases
     """
     def sort_key(tc):
-        # 1. First sort by sheet_name (alphabetically)
-        # STRICT: sheet_name does NOT exist on TestCase - use relationship if available
-        sheet_name = getattr(tc, 'sheet_name', '')
+        # 1. First sort by sw_part_number (alphabetically)
+        # SL.NO ordering must be based ONLY on SW Part Number, not sheet_name
+        sw_part_number = getattr(tc, 'sw_part_number', '')
         
         # 2. Then sort by version (newest first)
         # STRICT: app_sw_version does NOT exist on TestCase - get from execution or version FK
@@ -293,7 +295,7 @@ def sort_test_cases_by_version(test_cases):
         version_key = get_version_sort_key(version_str, descending_major=True)
         
         # 3. Finally sort by id (ascending)
-        return (sheet_name, version_key, tc.id)
+        return (sw_part_number, version_key, tc.id)
     
     return sorted(test_cases, key=sort_key)
 

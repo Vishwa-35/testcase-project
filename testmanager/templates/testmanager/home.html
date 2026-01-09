@@ -295,7 +295,9 @@ h2 {
     <div class="d-flex justify-content-between align-items-center">
       <h2 class="mb-0">Dashboard Overview</h2>
       <div class="d-flex gap-2">
-        {% if perms.testmanager.change_testcase %}
+        {# UPLOAD EXCEL: Manager only (superuser) #}
+        {# TESTERS CANNOT upload Excel #}
+        {% if is_manager or user.is_superuser %}
           <a class="btn btn-success" href="{% url 'upload_excel' %}?next={% url 'testcase_list' %}">Upload Excel</a>
         {% endif %}
       </div>

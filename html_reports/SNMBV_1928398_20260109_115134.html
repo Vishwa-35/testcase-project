@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Cases Report - SNMBV</title>
+    <style>
+        /* Inline CSS - No external dependencies */
+        * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    padding: 20px;
+    background: #FFFFFF;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.export-header {
+    background: #0052A5;
+    color: white;
+    padding: 30px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 30px rgba(0, 82, 165, 0.3);
+}
+
+.export-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.export-header p {
+    font-size: 1.1rem;
+    opacity: 0.95;
+}
+
+.table-container {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background: #0052A5;
+    color: white;
+    border: none;
+    padding: 15px;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+.table tbody tr {
+    transition: all 0.3s ease;
+    height: 300px;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: scale(1.01);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.table tbody td {
+    padding: 15px;
+    vertical-align: top;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.badge {
+    padding: 8px 15px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 20px;
+}
+
+.footer-note {
+    text-align: center;
+    margin-top: 30px;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+
+.info-badge {
+    display: inline-block;
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    margin: 5px 0;
+}
+
+.chart-container {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+}
+
+.chart-box {
+    height: 300px;
+    position: relative;
+}
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+
+.stat-card .stat-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+.stat-card .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.stat-card.passed .stat-value { color: #28a745; }
+.stat-card.failed .stat-value { color: #dc3545; }
+.stat-card.not-executed .stat-value { color: #ffc107; }
+.stat-card.total .stat-value { color: #0052A5; }
+
+.share-btn {
+    padding: 12px 20px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.share-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.share-btn.copy {
+    background: #0052A5;
+    color: white;
+}
+
+.share-btn.teams {
+    background: #6264A7;
+    color: white;
+}
+
+.share-btn.outlook {
+    background: #0078D4;
+    color: white;
+}
+
+.share-btn.nearby {
+    background: #4285F4;
+    color: white;
+}
+
+/* New Share Modal Styles */
+.share-modal-content {
+    border-radius: 20px;
+    border: none;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    overflow: visible;
+}
+
+.share-modal-header {
+    border: none;
+    padding: 40px 30px 20px;
+    text-align: center;
+    position: relative;
+    background: white;
+}
+
+.share-modal-header .btn-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    opacity: 0.6;
+    font-size: 1.2rem;
+}
+
+.share-modal-header .btn-close:hover {
+    opacity: 1;
+}
+
+.share-icon-circle {
+    width: 80px;
+    height: 80px;
+    background: #0052A5;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    position: relative;
+    top: -20px;
+    box-shadow: 0 4px 15px rgba(0, 82, 165, 0.3);
+}
+
+.share-icon-circle i {
+    font-size: 2rem;
+    color: white;
+}
+
+.share-modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0F1A2B;
+    margin-bottom: 8px;
+}
+
+.share-modal-subtitle {
+    font-size: 0.95rem;
+    color: #6B7A8A;
+    margin-bottom: 0;
+}
+
+.share-modal-body {
+    padding: 0 30px 30px;
+}
+
+/* Share Link Section */
+.share-link-section {
+    margin-bottom: 30px;
+}
+
+.share-link-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #0F1A2B;
+    margin-bottom: 10px;
+}
+
+.share-link-input-group {
+    display: flex;
+    align-items: center;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 5px;
+    transition: all 0.3s ease;
+}
+
+.share-link-input-group:focus-within {
+    border-color: #0052A5;
+    box-shadow: 0 0 0 3px rgba(0, 82, 165, 0.1);
+}
+
+.share-link-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 12px 15px;
+    font-size: 0.9rem;
+    color: #0F1A2B;
+    outline: none;
+}
+
+.share-link-input::selection {
+    background: rgba(0, 82, 165, 0.2);
+}
+
+.share-link-copy-btn {
+    background: #0052A5;
+    border: none;
+    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.share-link-copy-btn:hover {
+    background: #046CFF;
+    transform: scale(1.05);
+}
+
+.share-link-copy-btn:active {
+    transform: scale(0.95);
+}
+
+.share-link-copy-btn i {
+    font-size: 1.1rem;
+}
+
+/* Share To Section */
+.share-to-section {
+    margin-top: 25px;
+}
+
+.share-to-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #0F1A2B;
+    margin-bottom: 15px;
+}
+
+.share-icons-container {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.share-icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    padding: 0;
+}
+
+.share-icon-btn:hover {
+    transform: translateY(-3px);
+}
+
+.share-icon-btn:active {
+    transform: translateY(-1px);
+}
+
+.share-icon-circle-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.share-icon-circle-icon i {
+    font-size: 1.5rem;
+    color: white;
+}
+
+.teams-icon {
+    background: #6264A7;
+}
+
+.teams-icon:hover {
+    background: #4f51a0;
+    box-shadow: 0 4px 12px rgba(98, 100, 167, 0.4);
+}
+
+.outlook-icon {
+    background: #0078D4;
+}
+
+.outlook-icon:hover {
+    background: #006bb3;
+    box-shadow: 0 4px 12px rgba(0, 120, 212, 0.4);
+}
+
+.copy-icon {
+    background: #0052A5;
+}
+
+.copy-icon:hover {
+    background: #046CFF;
+    box-shadow: 0 4px 12px rgba(0, 82, 165, 0.4);
+}
+
+.share-icon-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #0F1A2B;
+    text-align: center;
+}
+
+
+
+        
+        /* Additional Bootstrap-like utilities */
+        .container-fluid { width: 100%; padding: 0 15px; }
+        .row { display: flex; flex-wrap: wrap; margin: 0 -15px; }
+        .col-md-3, .col-md-6, .col-12 { padding: 0 15px; }
+        .col-md-3 { flex: 0 0 25%; max-width: 25%; }
+        .col-md-6 { flex: 0 0 50%; max-width: 50%; }
+        .col-12 { flex: 0 0 100%; max-width: 100%; }
+        .g-3 > * { margin-bottom: 1rem; }
+        .mt-2 { margin-top: 0.5rem; }
+        .mt-3 { margin-top: 1rem; }
+        .mt-4 { margin-top: 1.5rem; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mb-3 { margin-bottom: 1rem; }
+        .mb-4 { margin-bottom: 1.5rem; }
+        .p-3 { padding: 1rem; }
+        .text-center { text-align: center; }
+        .text-muted { color: #6c757d; }
+        .fw-bold { font-weight: 700; }
+        .badge { display: inline-block; padding: 0.25em 0.6em; font-size: 0.75em; font-weight: 700; line-height: 1; text-align: center; white-space: nowrap; vertical-align: baseline; border-radius: 0.25rem; }
+        .bg-success { background-color: #28a745 !important; color: white; }
+        .bg-danger { background-color: #dc3545 !important; color: white; }
+        .bg-info { background-color: #17a2b8 !important; color: white; }
+        .bg-warning { background-color: #ffc107 !important; color: #212529; }
+        .bg-secondary { background-color: #6c757d !important; color: white; }
+        .table { width: 100%; margin-bottom: 1rem; border-collapse: collapse; }
+        .table thead th { vertical-align: bottom; border-bottom: 2px solid #dee2e6; }
+        .table tbody td { border-top: 1px solid #dee2e6; }
+        .table-striped tbody tr:nth-of-type(odd) { background-color: rgba(0,0,0,.05); }
+        .table-responsive { display: block; width: 100%; overflow-x: auto; }
+        code { padding: 0.2em 0.4em; font-size: 87.5%; color: #e83e8c; background-color: #f8f9fa; border-radius: 0.25rem; }
+        .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; line-height: 1.5; border-radius: 0.2rem; }
+        .btn-outline-primary { color: #0052A5; border-color: #0052A5; background-color: transparent; text-decoration: none; display: inline-block; }
+        .btn-outline-primary:hover { color: #fff; background-color: #0052A5; border-color: #0052A5; }
+        .d-flex { display: flex; }
+        .justify-content-between { justify-content: space-between; }
+        .align-items-center { align-items: center; }
+        .align-items-start { align-items: flex-start; }
+        .me-1 { margin-right: 0.25rem; }
+        .me-2 { margin-right: 0.5rem; }
+        .me-3 { margin-right: 1rem; }
+        .mb-0 { margin-bottom: 0; }
+        .small { font-size: 0.875rem; }
+        .fs-1 { font-size: 2.5rem; }
+        .d-block { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="export-header">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="d-flex align-items-center mb-2">
+                        <div>
+                            <h1 class="mb-0">📄 Test Cases Export</h1>
+                            <p class="mb-2 text-muted">HTML Test Report – Standalone Offline Version</p>
+                        </div>
+                    </div>
+                    <p class="mb-2">
+                        Generated on January 09, 2026 11:51
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Project Overview Section -->
+        <div class="row g-3 mt-4 mb-4">
+            <div class="col-12">
+                <div class="card" style="background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <h5 class="mb-3" style="font-size: 1.1rem; font-weight: 600;">📋 Project Overview</h5>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <div class="small text-muted">Project Code</div>
+                            <div class="fw-bold">ksdjn</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">VCU Platform</div>
+                            <div class="fw-bold">lskjdvn</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Hardware Part Number</div>
+                            <div class="fw-bold">ksjdv</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Software Part Number</div>
+                            <div class="fw-bold">1928398</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Project Stage</div>
+                            <div class="fw-bold">ksjdvb</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Developer</div>
+                            <div class="fw-bold">ksjldvn</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Test Engineer</div>
+                            <div class="fw-bold">ksjdvb</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Application SW Version</div>
+                            <div class="fw-bold">kajdb</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Bootloader SW Version</div>
+                            <div class="fw-bold">ksjbvd</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Checksum Value</div>
+                            <div class="fw-bold">ksjbv</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">DBC test_it</div>
+                            <div class="fw-bold">kjdbv</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="row g-3 mt-4 mb-4">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h4 class="mb-3 text-center" style="font-size: 1.1rem; font-weight: 600;">📊 Status Distribution</h4>
+                    <div class="chart-box">
+                        <canvas id="statusPie" width="400" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h4 class="mb-3 text-center" style="font-size: 1.1rem; font-weight: 600;">📈 Test Cases Overview</h4>
+                    <div class="chart-box">
+                        <canvas id="swBarChart" width="400" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Cards Row -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-title" style="font-size: 0.85rem; color: #6c757d; margin-bottom: 10px;">Pass Current Total</div>
+                    <div class="kpi-progress-wrapper" style="position: relative; width: 100px; height: 100px; margin: 0 auto 15px;">
+                        <canvas id="passProgress" width="100" height="100"></canvas>
+                        <div class="kpi-percentage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: 700; color: #28a745;">100.00%</div>
+                    </div>
+                    <div class="kpi-details" style="text-align: center;">
+                        <div style="font-size: 0.75rem; color: #6c757d;">Total: <strong>1</strong></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-title" style="font-size: 0.85rem; color: #6c757d; margin-bottom: 10px;">Fail Current Total</div>
+                    <div class="kpi-progress-wrapper" style="position: relative; width: 100px; height: 100px; margin: 0 auto 15px;">
+                        <canvas id="failProgress" width="100" height="100"></canvas>
+                        <div class="kpi-percentage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: 700; color: #dc3545;">0.00%</div>
+                    </div>
+                    <div class="kpi-details" style="text-align: center;">
+                        <div style="font-size: 0.75rem; color: #6c757d;">Total: <strong>0</strong></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-title" style="font-size: 0.85rem; color: #6c757d; margin-bottom: 10px;">Not Executed Current Total</div>
+                    <div class="kpi-progress-wrapper" style="position: relative; width: 100px; height: 100px; margin: 0 auto 15px;">
+                        <canvas id="notExecProgress" width="100" height="100"></canvas>
+                        <div class="kpi-percentage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: 700; color: #ffc107;">0.00%</div>
+                    </div>
+                    <div class="kpi-details" style="text-align: center;">
+                        <div style="font-size: 0.75rem; color: #6c757d;">Total: <strong>0</strong></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-title" style="font-size: 0.85rem; color: #6c757d; margin-bottom: 10px;">Total Test Cases</div>
+                    <div class="kpi-progress-wrapper" style="position: relative; width: 100px; height: 100px; margin: 0 auto 15px;">
+                        <canvas id="totalProgress" width="100" height="100"></canvas>
+                        <div class="kpi-percentage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: 700; color: #0052A5;">100.00%</div>
+                    </div>
+                    <div class="kpi-details" style="text-align: center;">
+                        <div style="font-size: 0.75rem; color: #6c757d;">Total: <strong>1</strong></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>SL.NO</th>
+                            <th>SW Part Number</th>
+                            <th>Feature</th>
+                            <th>Requirement ID</th>
+                            <th>Requirement Description</th>
+                            <th>Test Case ID</th>
+                            <th>Test Case Summary</th>
+                            <th>Pre Conditions</th>
+                            <th>Inputs</th>
+                            <th>Periodic Time</th>
+                            <th>Test Steps</th>
+                            <th>Expected Result</th>
+                            <th>Status</th>
+                            <th>Reports</th>
+                            <th>Comments</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        <tr>
+                            <td><strong>1</strong></td>
+                            <td>1928398</td>
+                            <td>sjkdb</td>
+                            <td>jhqbf</td>
+                            <td>kjbd</td>
+                            <td><code>kiusdhv_kajdb</code></td>
+                            <td>iuwdh</td>
+                            <td>iuvh</td>
+                            <td>iuhv</td>
+                            <td>iusbv</td>
+                            <td>jsbv</td>
+                            <td>kjabs</td>
+                            <td>
+                                
+                                    
+                                        
+                                            <span class="badge bg-success">Pass</span>
+                                        
+                                    
+                                
+                            </td>
+                            <td>
+                                
+                                    <span class="text-muted">-</span>
+                                
+                            </td>
+                            <td>
+                                
+                                    <span class="text-muted">-</span>
+                                
+                            </td>
+                        </tr>
+                        
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="footer-note">
+            <p class="mb-0 text-muted">
+                🔒 This is a standalone offline export. All data is embedded and works without internet connection.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Inline JavaScript - No external dependencies
+        // Chart data
+        const statusLabels = ["PASS", "FAIL", "NOT EXECUTED"];
+        const statusValues = [1, 0, 0];
+        const sheetLabels = ["Total", "Executed", "Passed"];
+        const sheetValues = [1, 1, 1];
+        const barMode = "status_overview";
+        
+        const PASS_PERCENTAGE = 100.0;
+        const FAIL_PERCENTAGE = 0;
+        const NOT_EXEC_PERCENTAGE = 0;
+        const EXECUTED_PERCENTAGE = 100.0;
+        
+        // Pure JavaScript Chart Implementation (No Chart.js dependency)
+        function drawPieChart(canvasId, labels, values, colors) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(centerX, centerY) - 20;
+            
+            const total = values.reduce((a, b) => a + b, 0);
+            if (total === 0) return;
+            
+            let currentAngle = -Math.PI / 2;
+            
+            values.forEach((value, index) => {
+                const sliceAngle = (value / total) * 2 * Math.PI;
+                
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+                ctx.closePath();
+                ctx.fillStyle = colors[index] || '#999';
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw label
+                const labelAngle = currentAngle + sliceAngle / 2;
+                const labelX = centerX + Math.cos(labelAngle) * (radius * 0.7);
+                const labelY = centerY + Math.sin(labelAngle) * (radius * 0.7);
+                ctx.fillStyle = '#000';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(labels[index] + ' (' + value + ')', labelX, labelY);
+                
+                currentAngle += sliceAngle;
+            });
+        }
+        
+        function drawBarChart(canvasId, labels, values, colors) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const padding = 40;
+            const chartWidth = canvas.width - padding * 2;
+            const chartHeight = canvas.height - padding * 2;
+            const barWidth = chartWidth / labels.length;
+            const maxValue = Math.max(...values, 1);
+            
+            // Draw bars
+            values.forEach((value, index) => {
+                const barHeight = (value / maxValue) * chartHeight;
+                const x = padding + index * barWidth + barWidth * 0.1;
+                const y = padding + chartHeight - barHeight;
+                const w = barWidth * 0.8;
+                
+                ctx.fillStyle = Array.isArray(colors) ? colors[index] : colors;
+                ctx.fillRect(x, y, w, barHeight);
+                
+                // Draw value label
+                ctx.fillStyle = '#000';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(value.toString(), x + w / 2, y - 5);
+                
+                // Draw label
+                ctx.save();
+                ctx.translate(x + w / 2, padding + chartHeight + 15);
+                ctx.rotate(-Math.PI / 4);
+                ctx.textAlign = 'right';
+                ctx.fillText(labels[index], 0, 0);
+                ctx.restore();
+            });
+            
+            // Draw axes
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(padding, padding);
+            ctx.lineTo(padding, padding + chartHeight);
+            ctx.lineTo(padding + chartWidth, padding + chartHeight);
+            ctx.stroke();
+        }
+        
+        function drawCircularProgress(canvasId, percentage, color) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const r = 40, lw = 8;
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = lw;
+            ctx.stroke();
+            
+            const angle = (percentage / 100) * Math.PI * 2 - Math.PI / 2;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, -Math.PI / 2, angle);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lw;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+        
+        // Initialize charts when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Pie Chart
+            drawPieChart('statusPie', statusLabels, statusValues, ['#28a745', '#dc3545', '#ffc107']);
+            
+            // Bar Chart
+            drawBarChart('swBarChart', sheetLabels, sheetValues, '#0052A5');
+            
+            // Circular Progress
+            drawCircularProgress('passProgress', PASS_PERCENTAGE, '#28a745');
+            drawCircularProgress('failProgress', FAIL_PERCENTAGE, '#dc3545');
+            drawCircularProgress('notExecProgress', NOT_EXEC_PERCENTAGE, '#ffc107');
+            drawCircularProgress('totalProgress', EXECUTED_PERCENTAGE, '#0052A5');
+        });
+        
+        // Inline JS from export_html.js (if needed for additional functionality)
+        /* =========================================================
+   EXPORT PAGE – SHARE, FILTERS, CHARTS & KPI LOGIC
+   ========================================================= */
+
+/* -------------------------------
+   SHARE FUNCTIONALITY
+-------------------------------- */
+
+function copyLink() {
+    copyLinkFromInput();
+}
+
+function copyLinkFromInput() {
+    const shareLinkInput = document.getElementById('shareLinkInput');
+    const url = shareLinkInput ? shareLinkInput.value : window.location.href;
+    const modalEl = document.getElementById('shareModal');
+    const modal = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url)
+            .then(() => {
+                showCopyFeedback('Link copied to clipboard!');
+                updateCopyButtonIcon(true);
+            })
+            .catch(() => {
+                fallbackCopy(url, modal);
+            });
+    } else {
+        fallbackCopy(url, modal);
+    }
+}
+
+function updateCopyButtonIcon(success) {
+    const buttons = document.querySelectorAll('.share-link-copy-btn, .copy-icon');
+    buttons.forEach(btn => {
+        const icon = btn.querySelector('i');
+        if (!icon) return;
+
+        if (success) {
+            icon.className = 'bi bi-check';
+            setTimeout(() => {
+                icon.className = 'bi bi-clipboard';
+            }, 2000);
+        }
+    });
+}
+
+function fallbackCopy(url, modal) {
+    try {
+        const textarea = document.createElement('textarea');
+        textarea.value = url;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.opacity = '0';
+
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+
+        const success = document.execCommand('copy');
+        document.body.removeChild(textarea);
+
+        if (success) {
+            showCopyFeedback('Link copied to clipboard!');
+        } else {
+            showCopyFeedback('Copy failed. Please copy manually.', 'error');
+        }
+
+        if (modal) modal.hide();
+    } catch (err) {
+        showCopyFeedback('Copy failed. Please copy manually.', 'error');
+        if (modal) modal.hide();
+    }
+}
+
+function showCopyFeedback(message, type = 'success') {
+    let el = document.getElementById('copyFeedback');
+
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'copyFeedback';
+        el.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 14px 20px;
+            border-radius: 8px;
+            z-index: 10000;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideIn 0.3s ease;
+        `;
+        document.body.appendChild(el);
+    }
+
+    el.textContent = message;
+    el.style.backgroundColor = type === 'error' ? '#f8d7da' : '#d4edda';
+    el.style.color = type === 'error' ? '#721c24' : '#155724';
+    el.style.border = `1px solid ${type === 'error' ? '#f5c6cb' : '#c3e6cb'}`;
+
+    setTimeout(() => {
+        el.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => el.remove(), 300);
+    }, 3000);
+}
+
+/* Inject animation styles once */
+if (!document.getElementById('copyFeedbackStyles')) {
+    const style = document.createElement('style');
+    style.id = 'copyFeedbackStyles';
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to   { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to   { transform: translateX(100%); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function shareToTeams() {
+    const url = encodeURIComponent(window.location.href);
+    bootstrap.Modal.getInstance(document.getElementById('shareModal'))?.hide();
+    window.open(`https://teams.microsoft.com/share?href=${url}`, '_blank');
+}
+
+function shareToOutlook() {
+    const subject = encodeURIComponent('Test Cases Export');
+    const body = encodeURIComponent(`Check out this test cases export:\n${window.location.href}`);
+    bootstrap.Modal.getInstance(document.getElementById('shareModal'))?.hide();
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+}
+
+async function shareNearby() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('shareModal'));
+
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: 'Test Cases Export',
+                text: 'Check out this test cases export',
+                url: window.location.href
+            });
+            modal?.hide();
+        } catch {
+            copyLink();
+            modal?.hide();
+        }
+    } else {
+        copyLink();
+        modal?.hide();
+    }
+}
+
+/* -------------------------------
+   CHART INITIALIZATION
+-------------------------------- */
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (!window.Chart) return;
+
+    const safeParse = id => {
+        const el = document.getElementById(id);
+        if (!el) return null;
+        try { return JSON.parse(el.textContent); } catch { return null; }
+    };
+
+    const statusLabels = safeParse("statusLabels");
+    const statusValues = safeParse("statusValues");
+    const sheetLabels = safeParse("sheetLabels");
+    const sheetValues = safeParse("sheetValues");
+    const barMode = safeParse("barMode") || "total_per_sheet";
+
+    /* PIE CHART */
+    const pieEl = document.getElementById("statusPie");
+    if (pieEl && statusLabels?.length) {
+        new Chart(pieEl, {
+            type: "pie",
+            data: {
+                labels: statusLabels,
+                datasets: [{
+                    data: statusValues,
+                    backgroundColor: ["#28b70b", "#ff0202", "#fdf90e", "#9ca3af"]
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { position: "bottom" } } }
+        });
+    }
+
+    /* BAR CHART - Dynamic based on filter state */
+    const barEl = document.getElementById("swBarChart");
+    const barChartTitleEl = document.getElementById("barChartTitleText");
+    
+    if (barEl && sheetLabels?.length) {
+        let chartConfig;
+        let chartTitle;
+
+        if (barMode === "status_overview") {
+            // Sheet + SW selected: Show grouped bars (PASS/FAIL/NOT RELEVANT)
+            chartTitle = "Status Overview";
+            
+            // sheetValues contains: [total, pass, fail, not_relevant]
+            const totalValue = sheetValues[0] || 0;
+            const passValue = sheetValues[1] || 0;
+            const failValue = sheetValues[2] || 0;
+            const notRelevantValue = sheetValues[3] || 0;
+
+            chartConfig = {
+                type: "bar",
+                data: {
+                    labels: ["Status Breakdown"],
+                    datasets: [
+                        { 
+                            label: "Pass", 
+                            data: [passValue], 
+                            backgroundColor: "#28a745",
+                            borderColor: "#1e7e34",
+                            borderWidth: 1
+                        },
+                        { 
+                            label: "Fail", 
+                            data: [failValue], 
+                            backgroundColor: "#dc3545",
+                            borderColor: "#bd2130",
+                            borderWidth: 1
+                        },
+                        { 
+                            label: "Not Relevant", 
+                            data: [notRelevantValue], 
+                            backgroundColor: "#17a2b8",
+                            borderColor: "#138496",
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { 
+                            position: "top",
+                            display: true
+                        },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    return `Total: ${totalValue}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: { 
+                        y: { 
+                            beginAtZero: true, 
+                            ticks: { 
+                                precision: 0,
+                                stepSize: 1
+                            },
+                            title: {
+                                display: true,
+                                text: 'Number of Test Cases'
+                            }
+                        },
+                        x: { 
+                            ticks: { 
+                                maxRotation: 0, 
+                                minRotation: 0 
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                }
+            };
+        } else if (barMode === "total_per_sw") {
+            // Sheet selected: Show SW Part Number-wise totals
+            chartTitle = "SW Part Number Distribution";
+            
+            chartConfig = {
+                type: "bar",
+                data: {
+                    labels: sheetLabels,
+                    datasets: [{
+                        label: "Test Cases",
+                        data: sheetValues,
+                        backgroundColor: "#0d6efd",
+                        borderColor: "#0a58ca",
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { 
+                        y: { 
+                            beginAtZero: true, 
+                            ticks: { 
+                                precision: 0,
+                                stepSize: 1
+                            },
+                            title: {
+                                display: true,
+                                text: 'Number of Test Cases'
+                            }
+                        },
+                        x: { 
+                            ticks: { 
+                                maxRotation: 45, 
+                                minRotation: 45 
+                            },
+                            title: {
+                                display: true,
+                                text: 'SW Part Number'
+                            }
+                        }
+                    },
+                    plugins: { 
+                        legend: { 
+                            display: false 
+                        }
+                    }
+                }
+            };
+        } else {
+            // No filter: Show Sheet-wise totals (default)
+            chartTitle = "Sheet Distribution";
+            
+            chartConfig = {
+                type: "bar",
+                data: {
+                    labels: sheetLabels,
+                    datasets: [{
+                        label: "Test Cases",
+                        data: sheetValues,
+                        backgroundColor: "#0d6efd",
+                        borderColor: "#0a58ca",
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { 
+                        y: { 
+                            beginAtZero: true, 
+                            ticks: { 
+                                precision: 0,
+                                stepSize: 1
+                            },
+                            title: {
+                                display: true,
+                                text: 'Number of Test Cases'
+                            }
+                        },
+                        x: { 
+                            ticks: { 
+                                maxRotation: 45, 
+                                minRotation: 45 
+                            },
+                            title: {
+                                display: true,
+                                text: 'Sheet Name'
+                            }
+                        }
+                    },
+                    plugins: { 
+                        legend: { 
+                            display: false 
+                        }
+                    }
+                }
+            };
+        }
+
+        // Update chart title
+        if (barChartTitleEl) {
+            barChartTitleEl.textContent = chartTitle;
+        }
+
+        // Create chart
+        new Chart(barEl, chartConfig);
+    }
+
+    /* KPI CIRCULAR PROGRESS */
+    function drawCircularProgress(id, percentage, color) {
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const r = 40, lw = 8;
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = lw;
+        ctx.stroke();
+
+        const angle = (percentage / 100) * Math.PI * 2 - Math.PI / 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, -Math.PI / 2, angle);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lw;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+    }
+
+    drawCircularProgress('passProgress', window.PASS_PERCENTAGE || 0, '#28a745');
+    drawCircularProgress('failProgress', window.FAIL_PERCENTAGE || 0, '#dc3545');
+    drawCircularProgress('notExecProgress', window.NOT_EXEC_PERCENTAGE || 0, '#ffc107');
+    drawCircularProgress('totalProgress', window.EXECUTED_PERCENTAGE || 0, '#0052A5');
+});
+
+    </script>
+</body>
+</html>
+
+

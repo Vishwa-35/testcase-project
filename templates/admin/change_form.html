@@ -1,0 +1,21 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'testmanager/css/admin_custom.css' %}">
+{% endblock %}
+
+{% block content_title %}
+{% if title %}
+<h1 class="admin-page-title">
+    <span>{{ title }}</span>
+    {% if original %}
+    <span style="font-size: 16px; font-weight: 400; color: #6B7280; margin-left: 12px;">
+        #{{ original.id }}
+    </span>
+    {% endif %}
+</h1>
+{% endif %}
+{% endblock %}

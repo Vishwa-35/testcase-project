@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Cases Report - {{ selected_sheet }}</title>
+    <style>
+        /* Inline CSS - No external dependencies */
+        {{ inline_css|safe }}
+        
+        /* Additional Bootstrap-like utilities */
+        .container-fluid { width: 100%; padding: 0 15px; }
+        .row { display: flex; flex-wrap: wrap; margin: 0 -15px; }
+        .col-md-3, .col-md-6, .col-12 { padding: 0 15px; }
+        .col-md-3 { flex: 0 0 25%; max-width: 25%; }
+        .col-md-6 { flex: 0 0 50%; max-width: 50%; }
+        .col-12 { flex: 0 0 100%; max-width: 100%; }
+        .g-3 > * { margin-bottom: 1rem; }
+        .mt-2 { margin-top: 0.5rem; }
+        .mt-3 { margin-top: 1rem; }
+        .mt-4 { margin-top: 1.5rem; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mb-3 { margin-bottom: 1rem; }
+        .mb-4 { margin-bottom: 1.5rem; }
+        .p-3 { padding: 1rem; }
+        .text-center { text-align: center; }
+        .text-muted { color: #6c757d; }
+        .fw-bold { font-weight: 700; }
+        .badge { display: inline-block; padding: 0.25em 0.6em; font-size: 0.75em; font-weight: 700; line-height: 1; text-align: center; white-space: nowrap; vertical-align: baseline; border-radius: 0.25rem; }
+        .bg-success { background-color: #28a745 !important; color: white; }
+        .bg-danger { background-color: #dc3545 !important; color: white; }
+        .bg-info { background-color: #17a2b8 !important; color: white; }
+        .bg-warning { background-color: #ffc107 !important; color: #212529; }
+        .bg-secondary { background-color: #6c757d !important; color: white; }
+        .table { width: 100%; margin-bottom: 1rem; border-collapse: collapse; }
+        .table thead th { vertical-align: bottom; border-bottom: 2px solid #dee2e6; }
+        .table tbody td { border-top: 1px solid #dee2e6; }
+        .table-striped tbody tr:nth-of-type(odd) { background-color: rgba(0,0,0,.05); }
+        .table-responsive { display: block; width: 100%; overflow-x: auto; }
+        code { padding: 0.2em 0.4em; font-size: 87.5%; color: #e83e8c; background-color: #f8f9fa; border-radius: 0.25rem; }
+        .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; line-height: 1.5; border-radius: 0.2rem; }
+        .btn-outline-primary { color: #0052A5; border-color: #0052A5; background-color: transparent; text-decoration: none; display: inline-block; }
+        .btn-outline-primary:hover { color: #fff; background-color: #0052A5; border-color: #0052A5; }
+        .d-flex { display: flex; }
+        .justify-content-between { justify-content: space-between; }
+        .align-items-center { align-items: center; }
+        .align-items-start { align-items: flex-start; }
+        .me-1 { margin-right: 0.25rem; }
+        .me-2 { margin-right: 0.5rem; }
+        .me-3 { margin-right: 1rem; }
+        .mb-0 { margin-bottom: 0; }
+        .small { font-size: 0.875rem; }
+        .fs-1 { font-size: 2.5rem; }
+        .d-block { display: block; }
+        .form-control { display: block; width: 100%; padding: 0.375rem 0.75rem; font-size: 1rem; font-weight: 400; line-height: 1.5; color: #212529; background-color: #fff; background-clip: padding-box; border: 1px solid #ced4da; border-radius: 0.25rem; transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out; }
+        .form-control:focus { color: #212529; background-color: #fff; border-color: #86b7fe; outline: 0; box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="export-header">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="d-flex align-items-center mb-2">
+                        <div>
+                            <h1 class="mb-0">📄 Test Cases Export</h1>
+                            <p class="mb-2 text-muted">HTML Test Report – Standalone Offline Version</p>
+                        </div>
+                    </div>
+                    <p class="mb-2">
+                        Generated on {{ now|date:"F d, Y H:i" }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Project Overview Section -->
+        <div class="row g-3 mt-4 mb-4">
+            <div class="col-12">
+                <div class="card" style="background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <h5 class="mb-3" style="font-size: 1.1rem; font-weight: 600;">📋 Project Overview</h5>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <div class="small text-muted">Project Code</div>
+                            <div class="fw-bold">{{ project_code|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">VCU Platform</div>
+                            <div class="fw-bold">{{ vcu_platform|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Hardware Part Number</div>
+                            <div class="fw-bold">{{ hw_part_number|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Software Part Number</div>
+                            <div class="fw-bold">{{ software_part_number|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Project Stage</div>
+                            <div class="fw-bold">{{ project_stage|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Developer</div>
+                            <div class="fw-bold">{{ developer|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Test Engineer</div>
+                            <div class="fw-bold">{{ test_engineer|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Application SW Version</div>
+                            <div class="fw-bold">{{ app_sw_version|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Bootloader SW Version</div>
+                            <div class="fw-bold">{{ bootloader_sw_version|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Checksum Value</div>
+                            <div class="fw-bold">{{ checksum_value|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">DBC test_it</div>
+                            <div class="fw-bold">{{ dbc_test_it|default:"-" }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="row g-3 mt-4 mb-4">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h4 class="mb-3 text-center" style="font-size: 1.1rem; font-weight: 600;">📊 Status Distribution</h4>
+                    <div class="chart-box">
+                        <canvas id="statusPie" width="400" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h4 class="mb-3 text-center" style="font-size: 1.1rem; font-weight: 600;">📈 Test Cases Overview</h4>
+                    <div class="chart-box">
+                        <canvas id="swBarChart" width="400" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Cards Row -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-title" style="font-size: 0.85rem; color: #6c757d; margin-bottom: 10px;">Pass Current Total</div>
+                    <div class="kpi-progress-wrapper" style="position: relative; width: 100px; height: 100px; margin: 0 auto 15px;">
+                        <canvas id="passProgress" width="100" height="100"></canvas>
+                        <div class="kpi-percentage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: 700; color: #28a745;">{{ pass_percentage|default:0|floatformat:2 }}%</div>
+                    </div>
+                    <div class="kpi-details" style="text-align: center;">
+                        <div style="font-size: 0.75rem; color: #6c757d;">Total: <strong>{{ passed_count|default:0 }}</strong></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-title" style="font-size: 0.85rem; color: #6c757d; margin-bottom: 10px;">Fail Current Total</div>
+                    <div class="kpi-progress-wrapper" style="position: relative; width: 100px; height: 100px; margin: 0 auto 15px;">
+                        <canvas id="failProgress" width="100" height="100"></canvas>
+                        <div class="kpi-percentage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: 700; color: #dc3545;">{{ fail_percentage|default:0|floatformat:2 }}%</div>
+                    </div>
+                    <div class="kpi-details" style="text-align: center;">
+                        <div style="font-size: 0.75rem; color: #6c757d;">Total: <strong>{{ failed_count|default:0 }}</strong></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-title" style="font-size: 0.85rem; color: #6c757d; margin-bottom: 10px;">Not Executed Current Total</div>
+                    <div class="kpi-progress-wrapper" style="position: relative; width: 100px; height: 100px; margin: 0 auto 15px;">
+                        <canvas id="notExecProgress" width="100" height="100"></canvas>
+                        <div class="kpi-percentage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: 700; color: #ffc107;">{{ not_exec_percentage|default:0|floatformat:2 }}%</div>
+                    </div>
+                    <div class="kpi-details" style="text-align: center;">
+                        <div style="font-size: 0.75rem; color: #6c757d;">Total: <strong>{{ not_executed_count|default:0 }}</strong></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-title" style="font-size: 0.85rem; color: #6c757d; margin-bottom: 10px;">Total Test Cases</div>
+                    <div class="kpi-progress-wrapper" style="position: relative; width: 100px; height: 100px; margin: 0 auto 15px;">
+                        <canvas id="totalProgress" width="100" height="100"></canvas>
+                        <div class="kpi-percentage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: 700; color: #0052A5;">{{ executed_percentage|default:0|floatformat:2 }}%</div>
+                    </div>
+                    <div class="kpi-details" style="text-align: center;">
+                        <div style="font-size: 0.75rem; color: #6c757d;">Total: <strong>{{ total_test_cases|default:0 }}</strong></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Dropdowns (Offline) -->
+        <div class="row g-3 mt-4 mb-4">
+            <div class="col-md-4">
+                <label for="filterSheet" class="fw-bold mb-2">Filter by Sheet:</label>
+                <select id="filterSheet" class="form-control" style="padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 0.25rem; width: 100%;">
+                    <option value="">All Sheets</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="filterSW" class="fw-bold mb-2">Filter by SW Part Number:</label>
+                <select id="filterSW" class="form-control" style="padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 0.25rem; width: 100%;">
+                    <option value="">All SW Part Numbers</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="filterFeature" class="fw-bold mb-2">Filter by Feature:</label>
+                <select id="filterFeature" class="form-control" style="padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 0.25rem; width: 100%;">
+                    <option value="">All Features</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-striped" id="testCasesTable">
+                    <thead>
+                        <tr>
+                            <th>SL.NO</th>
+                            <th>SW Part Number</th>
+                            <th>Feature</th>
+                            <th>Requirement ID</th>
+                            <th>Requirement Description</th>
+                            <th>Test Case ID</th>
+                            <th>Test Case Summary</th>
+                            <th>Pre Conditions</th>
+                            <th>Inputs</th>
+                            <th>Periodic Time</th>
+                            <th>Test Steps</th>
+                            <th>Expected Result</th>
+                            <th>Status</th>
+                            <th>Reports</th>
+                            <th>Comments</th>
+                        </tr>
+                    </thead>
+                    <tbody id="testCasesTableBody">
+                        {% for test in tests %}
+                        <tr>
+                            <td><strong>{{ test.sl_no|default:"" }}</strong></td>
+                            <td>{{ test.sw_part_number|default:"" }}</td>
+                            <td>{{ test.feature|default:"" }}</td>
+                            <td>{{ test.display_requirement_id|default:test.requirement_id|default:"" }}</td>
+                            <td>{{ test.requirement_description|default:"" }}</td>
+                            <td><code>{{ test.display_test_case_id|default:test.test_case_id|default:"" }}</code></td>
+                            <td>{{ test.test_case_summary|default:"" }}</td>
+                            <td>{{ test.pre_conditions|default:"" }}</td>
+                            <td>{{ test.inputs|default:"" }}</td>
+                            <td>{{ test.periodic_time|default:"" }}</td>
+                            <td>{{ test.test_steps|default:"" }}</td>
+                            <td>{{ test.expected_result|default:"" }}</td>
+                            <td>
+                                {% if test.exec %}
+                                    {% with st=test.exec.status|default:""|upper %}
+                                        {% if st == "PASS" %}
+                                            <span class="badge bg-success">Pass</span>
+                                        {% elif st == "FAIL" %}
+                                            <span class="badge bg-danger">Fail</span>
+                                        {% elif st == "NOT RELEVANT" or st == "NOT_RELEVANT" %}
+                                            <span class="badge bg-info">Not Relevant</span>
+                                        {% elif st %}
+                                            <span class="badge bg-warning">{{ test.exec.status }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Not Executed</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                {% else %}
+                                    <span class="badge bg-secondary">Not Executed</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if test.exec and test.exec.reports %}
+                                    {% if test.exec.reports|lower|slice:":5" == "http:" or test.exec.reports|lower|slice:":6" == "https:" %}
+                                        <a href="{{ test.exec.reports }}" target="_blank" class="btn-sm btn-outline-primary">Open Report</a>
+                                    {% else %}
+                                        <small>{{ test.exec.reports|truncatewords:10 }}</small>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if test.exec and test.exec.comments %}
+                                    <small>{{ test.exec.comments|truncatewords:10 }}</small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="15" class="text-center text-muted py-5">
+                                <div class="fs-1 d-block mb-2">📭</div>
+                                No test cases found.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="footer-note">
+            <p class="mb-0 text-muted">
+                🔒 This is a standalone offline export. All data is embedded and works without internet connection.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Inline JavaScript - No external dependencies
+        // EMBED ALL DATA AS JSON FOR OFFLINE FILTERING
+        const REPORT_DATA = {{ report_data_json|safe }};
+        const ALL_SHEETS = {{ all_sheets_json|safe }};
+        const ALL_SW_PART_NUMBERS = {{ all_sw_part_numbers_json|safe }};
+        const ALL_FEATURES = {{ all_features_json|safe }};
+        
+        // Chart data
+        const statusLabels = {{ status_labels_json|safe }};
+        const statusValues = {{ status_values_json|safe }};
+        const sheetLabels = {{ sheet_labels_json|safe }};
+        const sheetValues = {{ sheet_values_json|safe }};
+        const barMode = {{ bar_mode_json|safe }};
+        
+        const PASS_PERCENTAGE = {{ pass_percentage|default:0 }};
+        const FAIL_PERCENTAGE = {{ fail_percentage|default:0 }};
+        const NOT_EXEC_PERCENTAGE = {{ not_exec_percentage|default:0 }};
+        const EXECUTED_PERCENTAGE = {{ executed_percentage|default:0 }};
+        
+        // OFFLINE FILTERING FUNCTIONS (Pure JavaScript, no backend calls)
+        function getStatusBadge(status) {
+            const st = (status || '').toUpperCase();
+            if (st === 'PASS') {
+                return '<span class="badge bg-success">Pass</span>';
+            } else if (st === 'FAIL') {
+                return '<span class="badge bg-danger">Fail</span>';
+            } else if (st === 'NOT RELEVANT' || st === 'NOT_RELEVANT') {
+                return '<span class="badge bg-info">Not Relevant</span>';
+            } else if (st) {
+                return '<span class="badge bg-warning">' + status + '</span>';
+            } else {
+                return '<span class="badge bg-secondary">Not Executed</span>';
+            }
+        }
+        
+        function renderTable(filteredData) {
+            const tbody = document.getElementById('testCasesTableBody');
+            if (!tbody) return;
+            
+            if (filteredData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="15" class="text-center text-muted py-5"><div class="fs-1 d-block mb-2">📭</div>No test cases found.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = filteredData.map(test => {
+                const reportsCell = test.reports 
+                    ? (test.reports.toLowerCase().startsWith('http') 
+                        ? '<a href="' + test.reports + '" target="_blank" class="btn-sm btn-outline-primary">Open Report</a>'
+                        : '<small>' + test.reports.substring(0, 50) + '</small>')
+                    : '<span class="text-muted">-</span>';
+                
+                return '<tr>' +
+                    '<td><strong>' + (test.sl_no || '') + '</strong></td>' +
+                    '<td>' + (test.sw_part_number || '') + '</td>' +
+                    '<td>' + (test.feature || '') + '</td>' +
+                    '<td>' + (test.requirement_id || '') + '</td>' +
+                    '<td>' + (test.requirement_description || '') + '</td>' +
+                    '<td><code>' + (test.test_case_id || '') + '</code></td>' +
+                    '<td>' + (test.test_case_summary || '') + '</td>' +
+                    '<td>' + (test.pre_conditions || '') + '</td>' +
+                    '<td>' + (test.inputs || '') + '</td>' +
+                    '<td>' + (test.periodic_time || '') + '</td>' +
+                    '<td>' + (test.test_steps || '') + '</td>' +
+                    '<td>' + (test.expected_result || '') + '</td>' +
+                    '<td>' + getStatusBadge(test.status) + '</td>' +
+                    '<td>' + reportsCell + '</td>' +
+                    '<td><small>' + (test.comments || '-') + '</small></td>' +
+                    '</tr>';
+            }).join('');
+        }
+        
+        function filterData() {
+            const selectedSheet = document.getElementById('filterSheet').value;
+            const selectedSW = document.getElementById('filterSW').value;
+            const selectedFeature = document.getElementById('filterFeature').value;
+            
+            let filtered = REPORT_DATA.filter(test => {
+                if (selectedSheet && test.sheet_name !== selectedSheet) return false;
+                if (selectedSW && test.sw_part_number !== selectedSW) return false;
+                if (selectedFeature && test.feature !== selectedFeature) return false;
+                return true;
+            });
+            
+            renderTable(filtered);
+            updateCharts(filtered);
+        }
+        
+        function updateCharts(filteredData) {
+            // Recalculate statistics from filtered data
+            const total = filteredData.length;
+            const executed = filteredData.filter(t => t.status).length;
+            const passed = filteredData.filter(t => t.status && t.status.toUpperCase() === 'PASS').length;
+            const failed = filteredData.filter(t => t.status && t.status.toUpperCase() === 'FAIL').length;
+            const notExecuted = total - executed;
+            
+            // Update pie chart
+            drawPieChart('statusPie', ['PASS', 'FAIL', 'NOT EXECUTED'], [passed, failed, notExecuted], ['#28a745', '#dc3545', '#ffc107']);
+            
+            // Update bar chart
+            drawBarChart('swBarChart', ['Total', 'Executed', 'Passed'], [total, executed, passed], '#0052A5');
+            
+            // Update progress circles
+            const passPct = total > 0 ? (passed / total * 100) : 0;
+            const failPct = total > 0 ? (failed / total * 100) : 0;
+            const notExecPct = total > 0 ? (notExecuted / total * 100) : 0;
+            const execPct = total > 0 ? (executed / total * 100) : 0;
+            
+            drawCircularProgress('passProgress', passPct, '#28a745');
+            drawCircularProgress('failProgress', failPct, '#dc3545');
+            drawCircularProgress('notExecProgress', notExecPct, '#ffc107');
+            drawCircularProgress('totalProgress', execPct, '#0052A5');
+            
+            // Update percentage displays
+            document.querySelector('#passProgress').nextElementSibling.querySelector('.kpi-percentage').textContent = passPct.toFixed(2) + '%';
+            document.querySelector('#failProgress').nextElementSibling.querySelector('.kpi-percentage').textContent = failPct.toFixed(2) + '%';
+            document.querySelector('#notExecProgress').nextElementSibling.querySelector('.kpi-percentage').textContent = notExecPct.toFixed(2) + '%';
+            document.querySelector('#totalProgress').nextElementSibling.querySelector('.kpi-percentage').textContent = execPct.toFixed(2) + '%';
+        }
+        
+        // Pure JavaScript Chart Implementation (No Chart.js dependency)
+        function drawPieChart(canvasId, labels, values, colors) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(centerX, centerY) - 20;
+            
+            const total = values.reduce((a, b) => a + b, 0);
+            if (total === 0) return;
+            
+            let currentAngle = -Math.PI / 2;
+            
+            values.forEach((value, index) => {
+                const sliceAngle = (value / total) * 2 * Math.PI;
+                
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+                ctx.closePath();
+                ctx.fillStyle = colors[index] || '#999';
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw label
+                const labelAngle = currentAngle + sliceAngle / 2;
+                const labelX = centerX + Math.cos(labelAngle) * (radius * 0.7);
+                const labelY = centerY + Math.sin(labelAngle) * (radius * 0.7);
+                ctx.fillStyle = '#000';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(labels[index] + ' (' + value + ')', labelX, labelY);
+                
+                currentAngle += sliceAngle;
+            });
+        }
+        
+        function drawBarChart(canvasId, labels, values, colors) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const padding = 40;
+            const chartWidth = canvas.width - padding * 2;
+            const chartHeight = canvas.height - padding * 2;
+            const barWidth = chartWidth / labels.length;
+            const maxValue = Math.max(...values, 1);
+            
+            // Draw bars
+            values.forEach((value, index) => {
+                const barHeight = (value / maxValue) * chartHeight;
+                const x = padding + index * barWidth + barWidth * 0.1;
+                const y = padding + chartHeight - barHeight;
+                const w = barWidth * 0.8;
+                
+                ctx.fillStyle = Array.isArray(colors) ? colors[index] : colors;
+                ctx.fillRect(x, y, w, barHeight);
+                
+                // Draw value label
+                ctx.fillStyle = '#000';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(value.toString(), x + w / 2, y - 5);
+                
+                // Draw label
+                ctx.save();
+                ctx.translate(x + w / 2, padding + chartHeight + 15);
+                ctx.rotate(-Math.PI / 4);
+                ctx.textAlign = 'right';
+                ctx.fillText(labels[index], 0, 0);
+                ctx.restore();
+            });
+            
+            // Draw axes
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(padding, padding);
+            ctx.lineTo(padding, padding + chartHeight);
+            ctx.lineTo(padding + chartWidth, padding + chartHeight);
+            ctx.stroke();
+        }
+        
+        function drawCircularProgress(canvasId, percentage, color) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const r = 40, lw = 8;
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = lw;
+            ctx.stroke();
+            
+            const angle = (percentage / 100) * Math.PI * 2 - Math.PI / 2;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, -Math.PI / 2, angle);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lw;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+        
+        // Initialize charts and dropdowns when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Populate dropdowns with available options
+            const sheetSelect = document.getElementById('filterSheet');
+            const swSelect = document.getElementById('filterSW');
+            const featureSelect = document.getElementById('filterFeature');
+            
+            ALL_SHEETS.forEach(sheet => {
+                const option = document.createElement('option');
+                option.value = sheet;
+                option.textContent = sheet;
+                sheetSelect.appendChild(option);
+            });
+            
+            ALL_SW_PART_NUMBERS.forEach(sw => {
+                const option = document.createElement('option');
+                option.value = sw;
+                option.textContent = sw;
+                swSelect.appendChild(option);
+            });
+            
+            ALL_FEATURES.forEach(feature => {
+                const option = document.createElement('option');
+                option.value = feature;
+                option.textContent = feature;
+                featureSelect.appendChild(option);
+            });
+            
+            // Add event listeners for filtering
+            sheetSelect.addEventListener('change', filterData);
+            swSelect.addEventListener('change', filterData);
+            featureSelect.addEventListener('change', filterData);
+            
+            // Initialize charts with full data
+            drawPieChart('statusPie', statusLabels, statusValues, ['#28a745', '#dc3545', '#ffc107']);
+            drawBarChart('swBarChart', sheetLabels, sheetValues, '#0052A5');
+            drawCircularProgress('passProgress', PASS_PERCENTAGE, '#28a745');
+            drawCircularProgress('failProgress', FAIL_PERCENTAGE, '#dc3545');
+            drawCircularProgress('notExecProgress', NOT_EXEC_PERCENTAGE, '#ffc107');
+            drawCircularProgress('totalProgress', EXECUTED_PERCENTAGE, '#0052A5');
+        });
+        
+        // Inline JS from export_html.js (if needed for additional functionality)
+        {{ inline_js|safe }}
+    </script>
+</body>
+</html>
+
+
