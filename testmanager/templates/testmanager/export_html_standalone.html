@@ -316,19 +316,19 @@
     </div>
 
     <!-- JSON data embedded using json_script for safe parsing -->
-    {{ report_data_json|json_script:"report-data" }}
-    {{ all_sheets_json|json_script:"all-sheets" }}
-    {{ all_sw_part_numbers_json|json_script:"all-sw-part-numbers" }}
-    {{ all_features_json|json_script:"all-features" }}
-    {{ status_labels_json|json_script:"status-labels" }}
-    {{ status_values_json|json_script:"status-values" }}
-    {{ sheet_labels_json|json_script:"sheet-labels" }}
-    {{ sheet_values_json|json_script:"sheet-values" }}
-    {{ bar_mode_json|json_script:"bar-mode" }}
-    {{ pass_percentage|json_script:"pass-percentage" }}
-    {{ fail_percentage|json_script:"fail-percentage" }}
-    {{ not_exec_percentage|json_script:"not-exec-percentage" }}
-    {{ executed_percentage|json_script:"executed-percentage" }}
+    {% if report_data_json is not None %}{{ report_data_json|json_script:"report-data" }}{% else %}<script type="application/json" id="report-data">[]</script>{% endif %}
+    {% if all_sheets_json is not None %}{{ all_sheets_json|json_script:"all-sheets" }}{% else %}<script type="application/json" id="all-sheets">[]</script>{% endif %}
+    {% if all_sw_part_numbers_json is not None %}{{ all_sw_part_numbers_json|json_script:"all-sw-part-numbers" }}{% else %}<script type="application/json" id="all-sw-part-numbers">[]</script>{% endif %}
+    {% if all_features_json is not None %}{{ all_features_json|json_script:"all-features" }}{% else %}<script type="application/json" id="all-features">[]</script>{% endif %}
+    {% if status_labels_json is not None %}{{ status_labels_json|json_script:"status-labels" }}{% else %}<script type="application/json" id="status-labels">[]</script>{% endif %}
+    {% if status_values_json is not None %}{{ status_values_json|json_script:"status-values" }}{% else %}<script type="application/json" id="status-values">[]</script>{% endif %}
+    {% if sheet_labels_json is not None %}{{ sheet_labels_json|json_script:"sheet-labels" }}{% else %}<script type="application/json" id="sheet-labels">[]</script>{% endif %}
+    {% if sheet_values_json is not None %}{{ sheet_values_json|json_script:"sheet-values" }}{% else %}<script type="application/json" id="sheet-values">[]</script>{% endif %}
+    {% if bar_mode_json is not None %}{{ bar_mode_json|json_script:"bar-mode" }}{% else %}<script type="application/json" id="bar-mode">"group"</script>{% endif %}
+    {% if pass_percentage is not None %}{{ pass_percentage|json_script:"pass-percentage" }}{% else %}<script type="application/json" id="pass-percentage">0</script>{% endif %}
+    {% if fail_percentage is not None %}{{ fail_percentage|json_script:"fail-percentage" }}{% else %}<script type="application/json" id="fail-percentage">0</script>{% endif %}
+    {% if not_exec_percentage is not None %}{{ not_exec_percentage|json_script:"not-exec-percentage" }}{% else %}<script type="application/json" id="not-exec-percentage">0</script>{% endif %}
+    {% if executed_percentage is not None %}{{ executed_percentage|json_script:"executed-percentage" }}{% else %}<script type="application/json" id="executed-percentage">0</script>{% endif %}
     {% if inline_js %}
     {{ inline_js|json_script:"inline-js-data" }}
     {% endif %}
