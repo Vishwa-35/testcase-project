@@ -86,12 +86,6 @@ class BaseModelAdmin(admin.ModelAdmin):
     list_per_page = 50
     list_max_show_all = 200
     
-    class Media:
-        css = {
-            'all': ('testmanager/css/admin_custom.css',)
-        }
-        js = ('testmanager/js/admin_bulk_actions.js',)
-    
     def get_actions(self, request):
         """
         Role-based action restrictions.
@@ -399,11 +393,6 @@ class TestCaseSheetAdmin(BaseModelAdmin):
     )
     
     inlines = [TestExecutionInline]
-    
-    class Media:
-        css = {
-            'all': ('testmanager/css/admin_custom.css',)
-        }
     
     def hierarchy_context(self, obj):
         """Display full hierarchy path with navigation links."""
