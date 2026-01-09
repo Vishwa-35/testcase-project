@@ -139,6 +139,11 @@ if not TESTING:
 
 
 # Redirects after login/logout
-LOGIN_URL = "/admin/login/"
+LOGIN_URL = "/login/"  # Use custom login page (not admin)
 LOGIN_REDIRECT_URL = "/"  # Redirect to home page after login
-LOGOUT_REDIRECT_URL = "/admin/login/"
+LOGOUT_REDIRECT_URL = "/login/"  # Redirect to custom login page after logout
+
+# Session settings - expire on browser close
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+# SESSION_COOKIE_AGE = 0  # Don't set to 0, let SESSION_EXPIRE_AT_BROWSER_CLOSE handle it
+SESSION_SAVE_EVERY_REQUEST = False  # Don't extend session on every request

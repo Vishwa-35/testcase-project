@@ -346,6 +346,13 @@ def get_feature_completion(instance, version_obj, sheet_obj, feature_name):
     """
     Get completion statistics for a specific feature scope.
     
+    A FEATURE is COMPLETED if and ONLY if:
+    - For the selected Sheet, SW Part Number, Version, Feature
+    - ALL test cases have status IN ("PASS", "FAIL")
+    - Status is NOT NULL and NOT empty string
+    
+    NO OTHER CONDITIONS (no version lock requirement, no PASS-only check, etc.)
+    
     Args:
         instance: TestInstance object
         version_obj: TestCaseVersion object
@@ -356,7 +363,7 @@ def get_feature_completion(instance, version_obj, sheet_obj, feature_name):
         tuple: (total_count: int, completed_count: int, is_completed: bool)
             - total_count: Total number of test cases for this feature scope
             - completed_count: Number of test cases with PASS/FAIL status
-            - is_completed: True if all tests are PASS/FAIL and version is locked
+            - is_completed: True if all tests have status IN ("PASS", "FAIL")
     """
     if not instance or not version_obj or not sheet_obj or not feature_name:
         return 0, 0, False
@@ -383,25 +390,14 @@ def get_feature_completion(instance, version_obj, sheet_obj, feature_name):
         test_case__in=test_cases
     )
     
-    # Count executions with PASS or FAIL status
+    # Count executions with PASS or FAIL status (excludes NULL and empty string)
     completed_count = executions.filter(
         status__in=["PASS", "FAIL"]
     ).count()
     
-    # Check if version is locked (manager approval required)
-    version_locked = version_obj.is_locked
-    
-    # Check if all test cases have executions
-    test_case_ids_with_executions = set(executions.values_list('test_case_id', flat=True))
-    test_case_ids_all = set(test_cases.values_list('id', flat=True))
-    all_test_cases_executed = (test_case_ids_all == test_case_ids_with_executions)
-    
-    # Feature is completed if: all tests executed, all have PASS/FAIL, and version is locked
-    is_completed = (
-        completed_count == total_count and
-        all_test_cases_executed and
-        version_locked
-    )
+    # Feature is completed if: all test cases have status IN ("PASS", "FAIL")
+    # This means completed_count must equal total_count
+    is_completed = (completed_count == total_count)
     
     return total_count, completed_count, is_completed
 
@@ -414,12 +410,14 @@ def is_feature_completed(instance, version_obj, sheet_obj, feature_name):
     - For a given feature, TestCaseSheet, SW Part Number, TestCaseVersion
     - ALL related TestExecution rows satisfy:
         - status IN (PASS / FAIL)
-        - version.is_locked = True (manager approval)
+        - status is NOT NULL and NOT empty string
     
     NOT allowed:
     - Partial executions
-    - NOT_EXECUTED rows
-    - Unlocked version
+    - NULL or empty status
+    - Status values other than PASS or FAIL
+    
+    NO OTHER CONDITIONS (no version lock requirement, no PASS-only check, etc.)
     
     Args:
         instance: TestInstance object

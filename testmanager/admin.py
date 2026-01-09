@@ -41,6 +41,8 @@ WHEN version.is_locked == True:
 
 from django.contrib import admin, messages
 from django.contrib.admin import AdminSite
+from django.contrib.auth.admin import UserAdmin, GroupAdmin
+from django.contrib.auth.models import User, Group
 from django.http import HttpResponse, HttpResponseRedirect
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -51,6 +53,7 @@ from django.db.models import Count, Q
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import render, get_object_or_404
 from django.template.response import TemplateResponse
+from urllib.parse import urlencode
 import io
 import openpyxl
 from openpyxl.utils import get_column_letter
@@ -99,41 +102,6 @@ class BaseModelAdmin(admin.ModelAdmin):
                 del actions['delete_selected']
         
         return actions
-    
-    def delete_selected(self, request, queryset):
-        """
-        Custom bulk delete with confirmation and logging.
-        """
-        if not (is_manager(request.user) or request.user.is_superuser):
-            self.message_user(request, "Only managers can delete records.", level=messages.ERROR)
-            return
-        
-        count = queryset.count()
-        if count == 0:
-            self.message_user(request, "No items selected.", level=messages.WARNING)
-            return
-        
-        # Log deletion
-        for obj in queryset:
-            try:
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action="DELETE",
-                    reference=f"{obj.__class__.__name__} #{obj.id}",
-                    remarks=f"Bulk deleted via admin",
-                    content_type=obj.__class__.__name__,
-                )
-            except Exception:
-                pass  # Don't fail if logging fails
-        
-        queryset.delete()
-        self.message_user(
-            request,
-            f"Successfully deleted {count} item(s).",
-            level=messages.SUCCESS
-        )
-    
-    delete_selected.short_description = "Delete selected items"
 
 
 class HiddenModelAdmin(BaseModelAdmin):
@@ -148,6 +116,8 @@ class TestCaseAdmin(BaseModelAdmin):
     """
     HIDDEN: TestCase is master definition only.
     Not accessible from admin index - only referenced via hierarchy.
+    
+    SUPERUSER ACCESS: Superusers can edit all fields via admin.
     """
     list_display = (
         "id",
@@ -160,12 +130,14 @@ class TestCaseAdmin(BaseModelAdmin):
     )
     list_display_links = ("base_test_case_id", "test_case_id")
     ordering = ("base_test_case_id", "-id")
+    list_filter = ("sheet_name",)  # Enable filtering by sheet_name
     search_fields = (
         "base_test_case_id",
         "test_case_id",
         "sw_part_number",
         "feature",
     )
+    # Default readonly fields for non-superusers
     readonly_fields = (
         "instance",
         "sheet_name",
@@ -194,17 +166,38 @@ class TestCaseAdmin(BaseModelAdmin):
         return False
     
     def has_change_permission(self, request, obj=None):
-        return False
+        """Allow superusers to edit TestCase records."""
+        return request.user.is_superuser
     
     def has_delete_permission(self, request, obj=None):
         return False
+    
+    def get_readonly_fields(self, request, obj=None):
+        """
+        Remove readonly restrictions for superusers.
+        Superusers can edit all fields.
+        """
+        if request.user.is_superuser:
+            # Only keep created_at and updated_at as readonly for superusers
+            return ("created_at", "updated_at")
+        # Non-superusers see all fields as readonly
+        return self.readonly_fields
+    
+    def get_form(self, request, obj=None, **kwargs):
+        """
+        Ensure form uses all fields (fields="__all__").
+        """
+        kwargs.setdefault('fields', '__all__')
+        return super().get_form(request, obj, **kwargs)
 
 
 class SheetMetaAdmin(BaseModelAdmin):
-    """HIDDEN: SheetMeta is internal metadata only."""
-    list_display = ("sheet_name",)
+    """
+    SheetMeta admin with link to filtered TestCase list.
+    """
+    list_display = ("sheet_name", "view_testcases")
     search_fields = ("sheet_name",)
-    readonly_fields = ("headers",)
+    readonly_fields = ("headers", "view_testcases")
     
     def has_add_permission(self, request):
         return False
@@ -214,6 +207,26 @@ class SheetMetaAdmin(BaseModelAdmin):
     
     def has_delete_permission(self, request, obj=None):
         return False
+    
+    @admin.display(description="View Test Cases")
+    def view_testcases(self, obj):
+        """
+        Create a link to TestCase admin filtered by this sheet name.
+        """
+        if not obj.sheet_name:
+            return "-"
+        
+        # Generate URL to TestCase changelist filtered by sheet_name
+        # Use custom_admin site name for reverse lookup
+        url = reverse("custom_admin:testmanager_testcase_changelist")
+        # Append filter parameter: sheet_name__exact=<sheet_name>
+        filter_params = urlencode({"sheet_name__exact": obj.sheet_name})
+        filter_url = f"{url}?{filter_params}"
+        
+        return format_html(
+            '<a href="{}" class="button" style="padding: 5px 10px; background: #417690; color: white; text-decoration: none; border-radius: 4px;">View Test Cases</a>',
+            filter_url
+        )
 
 
 class TestExecutionSnapshotAdmin(HiddenModelAdmin):
@@ -723,8 +736,12 @@ custom_admin_site.register(TestExecution, TestExecutionAdmin)
 class TestCaseVersionAdmin(HiddenModelAdmin):
     """
     ═══════════════════════════════════════════════════════════════════════════
-    MANAGER ONLY: Test Case Version Admin
+    HIDDEN: Test Case Version Admin
     ═══════════════════════════════════════════════════════════════════════════
+    
+    HIDDEN FROM ADMIN INDEX: This model is hidden from the admin index.
+    It remains accessible via direct URL or relations but does not appear
+    in the admin navigation.
     
     REQUIRED BEHAVIOR:
     - Show ALL versions (past + present) grouped by SW Part Number
@@ -804,8 +821,8 @@ class TestCaseVersionAdmin(HiddenModelAdmin):
     actions = ["lock_version", "approve_version"]
     
     def has_module_permission(self, request):
-        """MANAGER ONLY: Hide from admin index for non-managers."""
-        return is_manager(request.user) or request.user.is_superuser
+        """HIDDEN: Always hide from admin index."""
+        return False
     
     @admin.display(description="Version", ordering="app_sw_version")
     def version_display(self, obj):
@@ -1251,28 +1268,8 @@ custom_admin_site.register(TestCaseSheet, TestCaseSheetAdmin)
 custom_admin_site.register(TestCaseVersion, TestCaseVersionAdmin)
 custom_admin_site.register(ProjectOverview, ProjectOverviewAdmin)
 
-# Register additional models (if needed for admin access)
-# TestInstance - Manager only
-class TestInstanceAdmin(BaseModelAdmin):
-    list_display = ('id', 'is_active', 'created_at', 'instance_info')
-    list_display_links = ('id',)
-    list_filter = ('is_active', 'created_at')
-    search_fields = ('id',)
-    ordering = ('-created_at',)
-    readonly_fields = ('created_at',)
-    
-    def has_module_permission(self, request):
-        """Manager only"""
-        return is_manager(request.user) or request.user.is_superuser
-    
-    def instance_info(self, obj):
-        """Display instance information."""
-        if obj.is_active:
-            return format_html('<span style="color: #10B981; font-weight: bold;">✓ ACTIVE</span>')
-        return format_html('<span style="color: #6B7280;">ARCHIVED</span>')
-    instance_info.short_description = "Status"
-
-custom_admin_site.register(TestInstance, TestInstanceAdmin)
+# TestInstance - HIDDEN from admin index (not registered)
+# This model is not exposed in admin index but can be accessed via relations if needed
 
 # SWVersionMapping - Hidden (internal use)
 class SWVersionMappingAdmin(HiddenModelAdmin):
@@ -1320,3 +1317,8 @@ class UserProfileAdmin(BaseModelAdmin):
         return is_manager(request.user) or request.user.is_superuser
 
 custom_admin_site.register(UserProfile, UserProfileAdmin)
+
+# Register Django's default User and Group admin
+# This ensures Users and Groups appear only once under Authentication and Authorization
+custom_admin_site.register(User, UserAdmin)
+custom_admin_site.register(Group, GroupAdmin)

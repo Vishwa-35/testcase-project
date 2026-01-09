@@ -355,7 +355,12 @@
 
             {% if tests|length == 0 %}
             <div class="alert alert-info text-center">
-                <i class="bi bi-info-circle me-2"></i>No test cases found. Try adjusting your filters.
+                <i class="bi bi-info-circle me-2"></i>
+                {% if selected_sheet %}
+                    No data found for this sheet. Please add or import test cases.
+                {% else %}
+                    No test cases found. Try adjusting your filters.
+                {% endif %}
             </div>
             {% endif %}
 

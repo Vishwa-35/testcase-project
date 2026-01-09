@@ -53,14 +53,13 @@ def get_sheets_api(request):
         }, status=403)
     
     try:
-        active_instance = get_active_instance()
-        
-        # Get all unique sheet names from TestCase
+        # FIXED: Get sheet names ONLY from SheetMeta (source of truth)
+        # This ensures all sheets appear, even if they have no test cases
+        from ..models import SheetMeta
         sheets = list(
-            TestCase.objects.filter(instance=active_instance)
-            .values_list('sheet_name', flat=True)
-            .distinct()
+            SheetMeta.objects.all()
             .order_by('sheet_name')
+            .values_list('sheet_name', flat=True)
         )
         
         return JsonResponse({
@@ -380,12 +379,14 @@ def get_sw_part_numbers_for_sheet_api(request):
 def get_completed_features_for_sw_api(request):
     """
     API: Get ONLY completed features for selected sheet + SW Part Numbers.
-    Returns DISTINCT features that are COMPLETED (all test cases have status != "").
+    Returns DISTINCT features that are COMPLETED (all test cases have status IN ("PASS", "FAIL")).
     Used for Create New Instance flow - Step 3.
     
-    FEATURE COMPLETION DEFINITION:
-    A feature is COMPLETED if ALL test cases under that feature have status != "".
-    Checks ALL versions (not just active) - feature is completed if completed in ANY version.
+    FEATURE COMPLETION DEFINITION (FEATURE-SCOPED):
+    A feature is COMPLETED if and ONLY if:
+    - For the selected Sheet, SW Part Number, Version, Feature
+    - ALL test cases have status IN ("PASS", "FAIL")
+    - Checks ONLY the ACTIVE version for each SW Part Number (not all versions)
     """
     try:
         active_instance = get_active_instance()
@@ -413,13 +414,38 @@ def get_completed_features_for_sw_api(request):
                 'error': 'At least one valid SW Part Number must be selected'
             }, status=400)
         
-        # Get all features for selected sheet and SW Part Numbers
-        # Check ALL versions (not just active) - feature is completed if completed in ANY version
+        # FEATURE-SCOPED: Get features for selected sheet and SW Part Numbers
+        # Only check ACTIVE versions (not all versions) - feature must be completed in active version
+        from ..services import get_feature_completion
+        from ..models import TestCaseSheet
+        
+        # Get active versions for each SW Part Number
+        active_versions = {}
+        for sw_part_number in sw_part_numbers:
+            # Get active version for this SW Part Number
+            version_obj = TestCaseVersion.objects.filter(
+                instance=active_instance,
+                sw_part_number=sw_part_number,
+                is_active=True
+            ).order_by('-created_at').first()
+            
+            if version_obj:
+                active_versions[sw_part_number] = version_obj
+        
+        if not active_versions:
+            return JsonResponse({
+                'ok': True,
+                'features': [],
+                'message': 'No active versions found for selected SW Part Numbers'
+            })
+        
+        # Get all features for selected sheet and active versions only
         all_features = list(
             TestCase.objects.filter(
                 instance=active_instance,
                 sheet_name=sheet_name,
-                sw_part_number__in=sw_part_numbers
+                sw_part_number__in=sw_part_numbers,
+                app_sw_version__in=[v.app_sw_version for v in active_versions.values()]
             )
             .exclude(feature__isnull=True)
             .exclude(feature__exact="")
@@ -428,79 +454,51 @@ def get_completed_features_for_sw_api(request):
             .order_by('feature')
         )
         
-        # Filter to only completed features
-        # A feature is completed if it's completed in ANY version for the selected SW Part Numbers
-        # Completion check: ALL test cases under that feature have TestExecution with status != ""
+        # Filter to only completed features (FEATURE-SCOPED validation)
+        # A feature is completed if ALL test cases under that feature have status IN ("PASS", "FAIL")
+        # Check ONLY active version for each SW Part Number
+        # Show feature if it's completed for AT LEAST ONE selected SW Part Number
         completed_features = []
         for feature_name in all_features:
             if not feature_name:
                 continue
             
-            # Check completion for this feature per SW Part Number and per version
-            # Feature is completed if ALL test cases under that feature have status != ""
-            # Check ALL versions (not just active) - feature is completed if completed in ANY version
-            
-            is_completed_anywhere = False
+            # Check completion for this feature per SW Part Number in active version only
+            # Feature is shown if completed for AT LEAST ONE SW Part Number
+            feature_completed_for_any_sw = False
             total_count = 0
             completed_count = 0
             
-            # Get all versions for selected SW Part Numbers
-            all_versions = TestCaseVersion.objects.filter(
-                instance=active_instance,
-                sw_part_number__in=sw_part_numbers
-            ).select_related()
-            
             # Check each SW Part Number separately
-            for sw_part_number in sw_part_numbers:
-                # Get all versions for this SW Part Number
-                sw_versions = [v for v in all_versions if v.sw_part_number == sw_part_number]
+            for sw_part_number, version_obj in active_versions.items():
+                # Get sheet object for this version
+                sheet_obj = TestCaseSheet.objects.filter(
+                    version=version_obj,
+                    sheet_name=sheet_name
+                ).first()
                 
-                if not sw_versions:
+                if not sheet_obj:
+                    # Sheet doesn't exist for this version - skip this SW Part Number
                     continue
                 
-                # Check completion in ANY version for this SW Part Number
-                for version_obj in sw_versions:
-                    # Get all test cases for this feature, sheet, SW Part Number, and version
-                    test_cases = TestCase.objects.filter(
-                        instance=active_instance,
-                        sheet_name=sheet_name,
-                        sw_part_number=sw_part_number,
-                        feature=feature_name,
-                        app_sw_version=version_obj.app_sw_version
-                    )
-                    
-                    sw_version_total_count = test_cases.count()
-                    if sw_version_total_count == 0:
-                        continue
-                    
-                    # Get all executions for these test cases in this version
-                    test_case_ids = list(test_cases.values_list('id', flat=True))
-                    executions = TestExecution.objects.filter(
-                        instance=active_instance,
-                        test_case_id__in=test_case_ids,
-                        version=version_obj
-                    ).exclude(status__isnull=True).exclude(status__exact="")
-                    
-                    # Count unique test cases that have executions with non-empty status
-                    executed_test_case_ids = set(executions.values_list('test_case_id', flat=True).distinct())
-                    all_test_case_ids = set(test_case_ids)
-                    
-                    # Feature is completed for this SW Part Number + Version if ALL test cases have executions with non-empty status
-                    sw_version_is_completed = (
-                        executed_test_case_ids == all_test_case_ids and 
-                        len(executed_test_case_ids) == sw_version_total_count and
-                        sw_version_total_count > 0
-                    )
-                    
-                    if sw_version_is_completed:
-                        is_completed_anywhere = True
-                        total_count += sw_version_total_count
-                        completed_count += len(executed_test_case_ids)
-                        # Found completion in this version, no need to check other versions for this SW Part Number
-                        break
+                # Check feature completion using feature-scoped validation
+                sw_total, sw_completed, sw_is_completed = get_feature_completion(
+                    active_instance, version_obj, sheet_obj, feature_name
+                )
+                
+                if sw_total == 0:
+                    # No test cases for this feature in this SW Part Number - skip
+                    continue
+                
+                total_count += sw_total
+                completed_count += sw_completed
+                
+                if sw_is_completed:
+                    # Feature is completed for this SW Part Number - include it
+                    feature_completed_for_any_sw = True
             
-            # Include feature if it's completed in ANY version for ANY selected SW Part Number
-            if is_completed_anywhere and total_count > 0:
+            # Include feature if it's completed for AT LEAST ONE selected SW Part Number in active version
+            if feature_completed_for_any_sw and total_count > 0:
                 completed_features.append({
                     'name': feature_name,
                     'total_count': total_count,
@@ -1062,14 +1060,11 @@ def export_html_snapshot(request, export_id):
     sheet_values = [total_test_cases, passed_count, failed_count, not_executed_count]
     
     # Get filter lists
+    # FIXED: Get sheet names ONLY from SheetMeta (source of truth)
     from ..models import SheetMeta
     sheet_names = list(
-        SheetMeta.objects.values_list("sheet_name", flat=True).distinct().order_by("sheet_name")
+        SheetMeta.objects.all().order_by("sheet_name").values_list("sheet_name", flat=True)
     )
-    if not sheet_names:
-        sheet_names = list(
-            TestCase.objects.values_list("sheet_name", flat=True).distinct().order_by("sheet_name")
-        )
     
     sw_list = []
     if snapshot.sw_part_number:

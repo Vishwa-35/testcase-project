@@ -58,6 +58,17 @@ from .admin_views import (
     UserCreateForm,
 )
 
+# Authentication views
+from .auth_views import (
+    CustomLoginView,
+    register_user,
+    CustomPasswordResetView,
+    CustomPasswordResetDoneView,
+    CustomPasswordResetConfirmView,
+    CustomPasswordResetCompleteView,
+    UserRegistrationForm,
+)
+
 # Make all functions available at package level for backward compatibility
 __all__ = [
     # Home
@@ -100,5 +111,13 @@ __all__ = [
     'create_new_test_instance',
     'get_feature_completion_status_api',
     'UserCreateForm',
+    # Auth
+    'CustomLoginView',
+    'register_user',
+    'CustomPasswordResetView',
+    'CustomPasswordResetDoneView',
+    'CustomPasswordResetConfirmView',
+    'CustomPasswordResetCompleteView',
+    'UserRegistrationForm',
 ]
 

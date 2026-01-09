@@ -590,7 +590,11 @@ h2 {
     {% else %}
       <div class="text-center text-muted py-4">
         <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-        No test cases found. Please select a sheet, SW Part Number, and Version to view test cases.
+        {% if selected_sheet %}
+          <p class="mb-0">No data found for this sheet. Please add or import test cases.</p>
+        {% else %}
+          <p class="mb-0">No test cases found. Please select a sheet, SW Part Number, and Version to view test cases.</p>
+        {% endif %}
       </div>
     {% endif %}
     </div>

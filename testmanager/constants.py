@@ -12,7 +12,7 @@ Future changes to Excel format, status values, or paths can be made in one place
 # Making them configurable allows Excel format changes without code modifications
 EXCEL_HEADER_ROW = 7  # Row where column headers are located
 EXCEL_DATA_START_ROW = 8  # First row containing data (after headers)
-EXCEL_SHEETS_TO_SKIP = 2  # Number of sheets to skip from the beginning (usually SUMMARY, LEGEND)
+EXCEL_SHEETS_TO_SKIP = 0  # Number of sheets to skip from the beginning (usually SUMMARY, LEGEND)
 
 # Excel column positions for project overview (if reading from Excel file)
 PROJECT_OVERVIEW_START_ROW = 8

@@ -394,8 +394,13 @@ def import_excel(request):
             all_instances.append(TestCase(**row_data))
             added_sheet += 1
 
-        # CRITICAL: Update SheetMeta for backward compatibility
-        SheetMeta.objects.update_or_create(sheet_name=clean_sheet, defaults={"headers": raw_headers})
+        # FIXED: Use get_or_create to reuse existing SheetMeta (never create duplicates)
+        # If sheet_name already exists, reuse it; otherwise create new one
+        sheet_meta, _ = SheetMeta.objects.get_or_create(sheet_name=clean_sheet, defaults={"headers": raw_headers})
+        # Update headers if sheet already existed
+        if sheet_meta.headers != raw_headers:
+            sheet_meta.headers = raw_headers
+            sheet_meta.save(update_fields=["headers"])
         added_total += added_sheet
 
     # PART 4: Excel import must FAIL if version mapping missing for a SW part number
@@ -522,7 +527,13 @@ def import_full_excel(request):
             all_instances.append(TestCase(**row_data))
             cnt += 1
 
-        SheetMeta.objects.update_or_create(sheet_name=clean_sheet, defaults={"headers": raw_headers})
+        # FIXED: Use get_or_create to reuse existing SheetMeta (never create duplicates)
+        # If sheet_name already exists, reuse it; otherwise create new one
+        sheet_meta, _ = SheetMeta.objects.get_or_create(sheet_name=clean_sheet, defaults={"headers": raw_headers})
+        # Update headers if sheet already existed
+        if sheet_meta.headers != raw_headers:
+            sheet_meta.headers = raw_headers
+            sheet_meta.save(update_fields=["headers"])
         total_added += cnt
 
     if all_instances:

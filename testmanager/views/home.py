@@ -78,16 +78,12 @@ def home(request):
     # Get active instance - all queries must filter by active instance only
     active_instance = get_active_instance()
     
-    # VERSION-SPECIFIC DASHBOARD: Build base queryset with filters
-    # STRICT: TestCase.sheet_name and sl_no DO NOT EXIST - removed after hierarchy refactor
-    # Sheet filtering MUST be done via: TestCase → TestCaseVersion → TestCaseSheet → sheet_name
-    # CRITICAL: Override model's default ordering (Meta.ordering includes sheet_name/sl_no which don't exist)
-    # Use explicit order_by to prevent Django from using model's default ordering
-    # Order by id (primary key) instead of deprecated sl_no field
+    # STEP 1: BUILD BASE QUERYSET - Apply filters in STRICT ORDER
+    # FILTER PRIORITY: Sheet → SW Part Number → Version → Feature
     base_qs = TestCase.objects.filter(instance=active_instance).order_by('id')
 
-    # CRITICAL: Sheet filtering must use TestCaseSheet FK relationship
-    # TestCase doesn't have direct FK to TestCaseSheet, so we match via TestCaseVersion
+    # FILTER 1: Sheet (MANDATORY if selected)
+    # If Sheet is selected, NOTHING outside that sheet is allowed
     if selected_sheet:
         from ..models import TestCaseSheet
         # Find TestCaseSheet objects with this sheet_name
@@ -105,21 +101,23 @@ def home(request):
         if version_filters_list:
             version_filters = reduce(or_, version_filters_list)
             base_qs = base_qs.filter(version_filters)
+        else:
+            # No sheets found - return empty queryset
+            base_qs = base_qs.none()
 
+    # FILTER 2: SW Part Number (optional)
     if selected_sw:
         base_qs = base_qs.filter(sw_part_number=selected_sw)
     
-    # FEATURE FILTERING: Filter by TestCase.feature (feature belongs to TestCase, not Version/Sheet/Execution)
+    # FILTER 3: Version (optional)
+    if selected_version:
+        base_qs = base_qs.filter(app_sw_version=selected_version)
+    
+    # FILTER 4: Feature (optional)
     if selected_feature:
         base_qs = base_qs.filter(feature=selected_feature)
-
-    # VERSION-SPECIFIC DASHBOARD: Filter by version
-    # If version is selected, show ONLY that version's test cases
-    # Otherwise, show latest versions only
-    sw_part_numbers = base_qs.values_list('sw_part_number', flat=True).distinct()
-    latest_versions = {}
-    sw_with_mappings = set()
     
+    # FILTER 3 CONTINUED: Version filtering (if not explicitly selected)
     # Check if user is Manager (needed for role-based version filtering)
     is_manager_check = is_manager(request.user)
     if request.user.is_superuser:
@@ -128,6 +126,9 @@ def home(request):
     # SECURITY: For non-managers, resolve active version ONCE using role-based filtering
     from ..version_service import get_active_version_for_user, get_versions_for_user
     active_version = None
+    latest_versions = {}
+    sw_with_mappings = set()
+    
     if not is_manager_check:
         # Non-manager: MUST use only the most recent active version
         if selected_sw:
@@ -142,22 +143,23 @@ def home(request):
             selected_version = active_version.app_sw_version
             if not selected_sw:
                 selected_sw = active_version.sw_part_number
+                # Re-apply SW filter
+                base_qs = base_qs.filter(sw_part_number=selected_sw)
     
-    if selected_version:
-        # Manager: Can select any version
-        # Non-manager: selected_version is already set to active version above
-        pass  # Version filtering will be done via execution queries
-    else:
+    # If version is not explicitly selected, filter by latest versions
+    if not selected_version:
+        # Get SW part numbers from already-filtered base_qs
+        sw_part_numbers = base_qs.values_list('sw_part_number', flat=True).distinct()
+        
         # ROLE-BASED VERSION FILTERING: No version selected
         # Managers: Show all versions (no filtering by active status)
         # Non-managers: Show only latest active versions (is_active=True)
         if is_manager_check:
-            # Manager: Show all versions (no filtering by active status)
-            # Filter by latest versions only - show only the most recent version for each SW Part Number
+            # Manager: Show latest versions (most recent per SW)
             for sw_num in sw_part_numbers:
                 if sw_num:
                     mapping = SWVersionMapping.objects.filter(
-                        instance=active_instance,  # PART 1: Only active instance
+                        instance=active_instance,
                         sw_part_number=sw_num
                     ).order_by('-updated_at').first()
                     if mapping:
@@ -168,32 +170,22 @@ def home(request):
             for sw_num in sw_part_numbers:
                 if sw_num:
                     mapping = SWVersionMapping.objects.filter(
-                        instance=active_instance,  # PART 1: Only active instance
+                        instance=active_instance,
                         sw_part_number=sw_num,
-                        is_active=True  # Only active versions for non-managers
+                        is_active=True
                     ).first()
                     if mapping:
                         latest_versions[sw_num] = mapping.version
                         sw_with_mappings.add(sw_num)
         
         # Filter test cases to only include those with latest versions
-        # Only filter SW part numbers that have mappings; others show all versions
-        if sw_part_numbers:
+        if latest_versions:
             version_filters_list = []
             
             # Add filters for SW with mappings (latest version only)
-            # CRITICAL: Filter by sw_part_number + app_sw_version to match TestCaseVersion
             for sw_num, version_str in latest_versions.items():
-                # Resolve TestCaseVersion to ensure it exists
-                version_obj = TestCaseVersion.objects.filter(
-                    instance=active_instance,
-                    sw_part_number=sw_num,
-                    app_sw_version=version_str
-                ).first()
-                if version_obj:
-                    # Filter TestCase by matching sw_part_number + app_sw_version
-                    version_q = Q(sw_part_number=sw_num, app_sw_version=version_str)
-                    version_filters_list.append(version_q)
+                version_q = Q(sw_part_number=sw_num, app_sw_version=version_str)
+                version_filters_list.append(version_q)
             
             # Also include SW part numbers that don't have mappings (show all their test cases)
             sw_without_mappings = set(sw_part_numbers) - sw_with_mappings
@@ -205,42 +197,51 @@ def home(request):
                 version_filters = reduce(or_, version_filters_list)
                 base_qs = base_qs.filter(version_filters)
 
-    execution_qs = TestExecution.objects.filter(instance=active_instance)
+    # STEP 2: BUILD EXECUTION QUERYSET - MUST use ONLY test cases from base_qs
+    # CRITICAL: Get test case IDs from filtered base_qs FIRST
+    test_case_ids = list(base_qs.values_list('id', flat=True))
     
-    # SECURITY: Filter by version FK with role-based access check
-    if selected_sw and selected_version:
-        # SECURITY: Use role-based version filtering
-        from ..version_service import can_user_access_version
-        versions = get_versions_for_user(request.user, active_instance, selected_sw)
-        version_obj = versions.filter(app_sw_version=selected_version).first()
+    # Build execution queryset ONLY for test cases in base_qs
+    if test_case_ids:
+        execution_qs = TestExecution.objects.filter(
+            instance=active_instance,
+            test_case_id__in=test_case_ids
+        )
         
-        # CRITICAL: Block access if user cannot access this version
-        if version_obj and can_user_access_version(request.user, version_obj):
-            execution_qs = execution_qs.filter(version=version_obj)  # Use explicit FK
-        else:
-            # User cannot access this version - return empty queryset
-            execution_qs = execution_qs.none()
-    elif latest_versions:
-        # Resolve all active versions using explicit FK
-        version_ids = []
-        for sw_num, version_str in latest_versions.items():
-            version_obj = TestCaseVersion.objects.filter(
-                instance=active_instance,
-                sw_part_number=sw_num,
-                app_sw_version=version_str,
-                is_active=True
-            ).first()
-            if version_obj:
-                version_ids.append(version_obj.id)
-        if version_ids:
-            execution_qs = execution_qs.filter(version_id__in=version_ids)  # Use explicit FK
-    
-    test_case_ids = base_qs.values_list('id', flat=True)
-    execution_qs = execution_qs.filter(test_case_id__in=test_case_ids)
-    
-    # FEATURE FILTERING: Filter executions by test_case__feature (feature belongs to TestCase)
-    if selected_feature:
-        execution_qs = execution_qs.filter(test_case__feature=selected_feature)
+        # SECURITY: Filter by version FK with role-based access check
+        if selected_sw and selected_version:
+            # SECURITY: Use role-based version filtering
+            from ..version_service import can_user_access_version
+            versions = get_versions_for_user(request.user, active_instance, selected_sw)
+            version_obj = versions.filter(app_sw_version=selected_version).first()
+            
+            # CRITICAL: Block access if user cannot access this version
+            if version_obj and can_user_access_version(request.user, version_obj):
+                execution_qs = execution_qs.filter(version=version_obj)  # Use explicit FK
+            else:
+                # User cannot access this version - return empty queryset
+                execution_qs = execution_qs.none()
+        elif latest_versions and not selected_version:
+            # Resolve all active versions using explicit FK
+            version_ids = []
+            for sw_num, version_str in latest_versions.items():
+                version_obj = TestCaseVersion.objects.filter(
+                    instance=active_instance,
+                    sw_part_number=sw_num,
+                    app_sw_version=version_str,
+                    is_active=True
+                ).first()
+                if version_obj:
+                    version_ids.append(version_obj.id)
+            if version_ids:
+                execution_qs = execution_qs.filter(version_id__in=version_ids)  # Use explicit FK
+        
+        # FEATURE FILTERING: Filter executions by test_case__feature (already in base_qs, but ensure consistency)
+        if selected_feature:
+            execution_qs = execution_qs.filter(test_case__feature=selected_feature)
+    else:
+        # No test cases match filters - return empty execution queryset
+        execution_qs = TestExecution.objects.filter(instance=active_instance).none()
     
     # VERSION-SPECIFIC DASHBOARD: Count executions by status for pie chart
     # Status categories: PASS, FAIL, NOT RELEVANT, NOT EXECUTED
@@ -283,75 +284,88 @@ def home(request):
     # Bar chart uses the same filtered base_qs which is already filtered by version
     # --- BAR GRAPH LOGIC (VERSION-AWARE) ---
 
-# CASE 1: ALL SHEETS SELECTED (default dashboard)
+    # STEP 3: BAR CHART DATA - MUST use ONLY filtered base_qs and execution_qs
+    # Bar chart reflects current filter selection
     if not selected_sheet:
+        # CASE 1: NO SHEET SELECTED - Show total per sheet (from filtered data only)
         bar_mode = "total_per_sheet"
-
-        # STRICT: Do NOT use test_case__sheet_name - get sheet names from SheetMeta
-        # Group executions by sheet using SheetMeta as source of truth
-        sheet_names_from_meta = list(SheetMeta.objects.values_list("sheet_name", flat=True).distinct().order_by("sheet_name"))
-        sheet_labels = []
+        
+        # Get sheet names from filtered test cases only
+        from ..models import TestCaseSheet
+        # Get sheets that match filtered test cases
+        filtered_sheet_names = set()
+        for tc in base_qs.values('sw_part_number', 'app_sw_version').distinct():
+            sheets = TestCaseSheet.objects.filter(
+                version__instance=active_instance,
+                version__sw_part_number=tc['sw_part_number'],
+                version__app_sw_version=tc['app_sw_version']
+            ).values_list('sheet_name', flat=True).distinct()
+            filtered_sheet_names.update(sheets)
+        
+        sheet_labels = sorted(list(filtered_sheet_names))
         sheet_values = []
         
-        # Count executions per sheet
-        # STRICT: Since TestCase no longer has sheet_name, we cannot filter by sheet directly
-        # This will be updated once TestCaseVersion/TestCaseSheet models are in place with proper relationships
-        # For now, get sheet names from SheetMeta and show empty counts
-        # TODO: Update to use TestCase → TestCaseVersion → TestCaseSheet → sheet_name relationship
-        if sheet_names_from_meta:
-            for sheet_name in sheet_names_from_meta:
-                sheet_labels.append(sheet_name)
-                # Placeholder: will be updated with proper relationship-based counting via versions__sheets__sheet_name
-                sheet_values.append(0)
+        # Count executions per sheet from filtered execution_qs
+        for sheet_name in sheet_labels:
+            # Count executions for this sheet from filtered data
+            count = execution_qs.filter(sheet__sheet_name=sheet_name).count()
+            sheet_values.append(count)
         
         if not sheet_labels:
             sheet_labels = []
             sheet_values = []
-
-
-# CASE 2: SHEET SELECTED, NO SW SELECTED
+    
     elif selected_sheet and not selected_sw:
+        # CASE 2: SHEET SELECTED, NO SW SELECTED - Show total per SW Part Number
         bar_mode = "total_per_sw"
-
-        # CRITICAL: Filter executions by version FK's sw_part_number, not legacy CharField
-        # Group by version FK's sw_part_number
-        sw_execution_qs = execution_qs.filter(
-            test_case__in=base_qs
-        ).exclude(version__sw_part_number__isnull=True).exclude(version__sw_part_number__exact="").values("version__sw_part_number").annotate(count=Count("id")).order_by("version__sw_part_number")
+        
+        # Group executions by SW Part Number from filtered execution_qs
+        sw_execution_qs = execution_qs.exclude(
+            version__sw_part_number__isnull=True
+        ).exclude(
+            version__sw_part_number__exact=""
+        ).values("version__sw_part_number").annotate(
+            count=Count("id")
+        ).order_by("version__sw_part_number")
+        
         sheet_labels = [row["version__sw_part_number"] for row in sw_execution_qs if row.get("version__sw_part_number")]
         sheet_values = [row["count"] for row in sw_execution_qs if row.get("version__sw_part_number")]
         
         if not sheet_labels:
             sheet_labels = []
             sheet_values = []
-
-
-# CASE 3: SHEET + SW SELECTED → STATUS SPLIT
+    
     else:
+        # CASE 3: SHEET + SW SELECTED (or more filters) - Show status breakdown
         bar_mode = "status_overview"
-
-        # STRICT: Do NOT use sheet_name directly - base_qs is already filtered by sheet
-        sw_qs = base_qs.filter(
-            sw_part_number=selected_sw
-        )
         
-        # CRITICAL: Filter by version FK's sw_part_number, not legacy CharField
-        sw_execution_qs = execution_qs.filter(
-            test_case__in=base_qs,
-            version__sw_part_number=selected_sw
-        )
-        
-        pass_count = sw_execution_qs.filter(status__iexact="pass").count()
-        fail_count = sw_execution_qs.filter(status__iexact="fail").count()
-        not_relevant_count = sw_execution_qs.filter(
+        # Use filtered base_qs and execution_qs directly
+        total_test_cases = base_qs.count()
+        pass_count = execution_qs.filter(status__iexact="pass").count()
+        fail_count = execution_qs.filter(status__iexact="fail").count()
+        not_relevant_count = execution_qs.filter(
             Q(status__iexact="not relevant") | Q(status__iexact="not_relevant")
         ).count()
-        sw_test_cases_with_executions = sw_execution_qs.values_list('test_case_id', flat=True).distinct()
-        not_exec_count = sw_qs.exclude(id__in=sw_test_cases_with_executions).count()
-
-        total_count = pass_count + fail_count + not_relevant_count + not_exec_count
-
-        # VERSION-SPECIFIC DASHBOARD: Bar chart labels and values for selected version
+        
+        # Count test cases without executions
+        test_cases_with_executions = execution_qs.values_list('test_case_id', flat=True).distinct()
+        not_exec_count = base_qs.exclude(id__in=test_cases_with_executions).count()
+        
+        total_count = total_test_cases  # Use actual count from filtered base_qs
+        
+        # Build bar chart label showing current filter
+        filter_label_parts = []
+        if selected_sheet:
+            filter_label_parts.append(f"Sheet: {selected_sheet}")
+        if selected_sw:
+            filter_label_parts.append(f"SW: {selected_sw}")
+        if selected_version:
+            filter_label_parts.append(f"Version: {selected_version}")
+        if selected_feature:
+            filter_label_parts.append(f"Feature: {selected_feature}")
+        
+        filter_label = " → ".join(filter_label_parts) if filter_label_parts else "All Data"
+        
         sheet_labels = [
             "Total Test Cases",
             "Pass",
@@ -359,7 +373,7 @@ def home(request):
             "Not Relevant",
             "Not Executed"
         ]
-
+        
         sheet_values = [
             total_count,
             pass_count,
@@ -376,17 +390,11 @@ def home(request):
     total_executed = passed_count + failed_count
 
     # --- Lists for filter selects --- (filtered by active instance)
-    # CRITICAL: Get sheet names from TestCaseSheet, ordered by most recent first
-    from ..models import TestCaseSheet
+    # FIXED: Get sheet names ONLY from SheetMeta (source of truth)
+    # Sheet dropdown must list unique sheet names, not dependent on SW part numbers
     sheet_names = list(
-        TestCaseSheet.objects.filter(version__instance=active_instance)
-        .values_list("sheet_name", flat=True)
-        .distinct()
-        .order_by("-created_at")
+        SheetMeta.objects.all().order_by("sheet_name").values_list("sheet_name", flat=True)
     )
-    # Fallback to SheetMeta if no TestCaseSheet records exist
-    if not sheet_names:
-        sheet_names = list(SheetMeta.objects.values_list("sheet_name", flat=True).distinct().order_by("-id"))
 
     sw_list = []
     if selected_sheet:
@@ -638,82 +646,37 @@ def home(request):
     can_export_reports_check = can_export_reports(user)  # Manager only
     can_create_instance_check = can_create_instance(user)  # Tester and above
     
-    # FEATURE LIST: Get distinct features via TestExecution → TestCase → Feature
-    # STRICT: Feature source is TestCase.feature ONLY
-    # Feature list must be derived via TestExecution → TestCase → Feature
-    # Scope feature list by selected TestCaseVersion (FK) and TestCaseSheet (FK)
-    feature_execution_qs = TestExecution.objects.filter(instance=active_instance)
+    # FEATURE LIST: Get distinct features from TestCase definitions ONLY
+    # CRITICAL: Feature dropdown MUST come from TEST CASE DEFINITIONS, NOT from execution records
+    # Reason: Execution may not exist yet for unexecuted features
+    # 
+    # Feature dropdown MUST be populated based ONLY on:
+    # - Selected Sheet (if selected)
+    # - Selected SW Part Number (if selected)
+    # 
+    # NOT based on:
+    # - execution status
+    # - completion
+    # - version completion
+    # - test execution table filters
     
-    # Filter by selected version (FK)
-    if selected_version and selected_sw:
-        # Resolve TestCaseVersion object
-        version_obj = TestCaseVersion.objects.filter(
-            instance=active_instance,
-            sw_part_number=selected_sw,
-            app_sw_version=selected_version
-        ).first()
-        if version_obj:
-            feature_execution_qs = feature_execution_qs.filter(version=version_obj)
-    elif latest_versions and not selected_version:
-        # Filter to latest versions only (if no version selected)
-        version_ids = []
-        for sw_num, version_str in latest_versions.items():
-            version_obj = TestCaseVersion.objects.filter(
-                instance=active_instance,
-                sw_part_number=sw_num,
-                app_sw_version=version_str,
-                is_active=True
-            ).first()
-            if version_obj:
-                version_ids.append(version_obj.id)
-        if version_ids:
-            feature_execution_qs = feature_execution_qs.filter(version_id__in=version_ids)
+    feature_qs = TestCase.objects.filter(instance=active_instance)
     
-    # Filter by selected sheet (FK)
+    # Filter by selected sheet (MANDATORY if selected)
     if selected_sheet:
-        # Resolve TestCaseSheet objects with this sheet_name
-        from ..models import TestCaseSheet
-        sheets = TestCaseSheet.objects.filter(
-            version__instance=active_instance,
-            sheet_name=selected_sheet
-        ).select_related('version')
-        
-        # If version is selected, further filter sheets by that version
-        if selected_version and selected_sw:
-            version_obj = TestCaseVersion.objects.filter(
-                instance=active_instance,
-                sw_part_number=selected_sw,
-                app_sw_version=selected_version
-            ).first()
-            if version_obj:
-                sheets = sheets.filter(version=version_obj)
-        elif latest_versions and not selected_version:
-            # Filter sheets by latest versions
-            version_ids = []
-            for sw_num, version_str in latest_versions.items():
-                version_obj = TestCaseVersion.objects.filter(
-                    instance=active_instance,
-                    sw_part_number=sw_num,
-                    app_sw_version=version_str,
-                    is_active=True
-                ).first()
-                if version_obj:
-                    version_ids.append(version_obj.id)
-            if version_ids:
-                sheets = sheets.filter(version_id__in=version_ids)
-        
-        # Filter executions by sheet FK
-        sheet_ids = list(sheets.values_list('id', flat=True))
-        if sheet_ids:
-            feature_execution_qs = feature_execution_qs.filter(sheet_id__in=sheet_ids)
+        feature_qs = feature_qs.filter(sheet_name=selected_sheet)
     
-    # Get distinct features from TestCase via TestExecution
-    # Feature source: TestCase.feature ONLY
+    # Filter by selected SW Part Number (MANDATORY if selected)
+    if selected_sw:
+        feature_qs = feature_qs.filter(sw_part_number=selected_sw)
+    
+    # Get distinct features from TestCase definitions
+    # Exclude null and empty features
     feature_list = sorted(set(
-        feature_execution_qs
-        .exclude(test_case__feature__isnull=True)
-        .exclude(test_case__feature__exact="")
-        .values_list('test_case__feature', flat=True)
+        feature_qs
+        .exclude(feature__isnull=True)
+        .exclude(feature__exact="")
+        .values_list('feature', flat=True)
         .distinct()
     ))
     

@@ -136,5 +136,15 @@
   </div>
 </div>
 
+<script>
+    // Auto-logout on tab/window close
+    // Session expires on browser close (handled by SESSION_EXPIRE_AT_BROWSER_CLOSE)
+    // This ensures session doesn't persist when tab/window is closed
+    
+    // Session cookie expires on browser close (set_expiry(0) in login view)
+    // This ensures user must login again when reopening the app
+    // Django's SESSION_EXPIRE_AT_BROWSER_CLOSE setting handles this automatically
+</script>
+
 </body>
 </html>

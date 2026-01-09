@@ -54,6 +54,9 @@ class UserCreateForm(ModelForm):
 @login_required
 @require_POST
 def custom_logout(request):
+    """Logout view that clears session and redirects to login."""
+    # Clear session data
+    request.session.flush()
     logout(request)
     # Always go back to login page
     return redirect(settings.LOGIN_URL)
@@ -413,7 +416,8 @@ def create_new_test_instance(request):
     FEATURE COMPLETION REQUIREMENTS:
     - For a given feature, sheet, sw_part_number, version:
     - ALL TestExecution rows must have status IN (PASS / FAIL)
-    - version.is_locked = True (manager approval)
+    - Status must NOT be NULL or empty string
+    - NO OTHER CONDITIONS (no version lock requirement)
     
     This function:
     1. Checks feature completion (not global completion)
@@ -465,15 +469,19 @@ def create_new_test_instance(request):
     try:
         import json
         from ..models import SWVersionMapping
+        from ..logging_utils import log_error
+        
         data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
         
-        # NEW CONTRACT: Accept sw_part_numbers array and version_mappings dictionary
-        # INSTANCE RULE: Ask version ONCE per sw_part_number
-        # Popup must list UNIQUE sw_part_numbers and ask version for each
+        # STEP 1: READ REQUEST PAYLOAD
+        # Frontend sends: sheet, sw_part_numbers (array), features (array), new_version (single string)
         sheet_name = data.get('sheet', '').strip()
         sw_part_numbers = data.get('sw_part_numbers', [])  # Array of SW Part Numbers
-        version_mappings_input = data.get('version_mappings', {})  # Dictionary: {sw_part_number: version}
-        feature_names = data.get('features', [])  # Array of feature names (optional - not required for instance creation)
+        feature_names = data.get('features', [])  # Array of feature names
+        new_version = data.get('new_version', '').strip()  # USER-ENTERED VERSION (single string)
+        
+        # Also check for version_mappings (backward compatibility)
+        version_mappings_input = data.get('version_mappings', {})
         
         # Convert to list if it's a string (backward compatibility)
         if isinstance(sw_part_numbers, str):
@@ -482,7 +490,6 @@ def create_new_test_instance(request):
             feature_names = [feature_names] if feature_names else []
         if isinstance(version_mappings_input, str):
             try:
-                import json
                 version_mappings_input = json.loads(version_mappings_input)
             except:
                 version_mappings_input = {}
@@ -500,24 +507,48 @@ def create_new_test_instance(request):
                 'error': 'Please select at least one SW Part Number.'
             })
         
-        # INSTANCE RULE: Validate that version is provided for each SW Part Number
-        version_mappings = {}
-        missing_versions = []
-        for sw_part_number in sw_part_numbers:
-            sw_part_number = sw_part_number.strip() if sw_part_number else ''
-            if not sw_part_number:
-                continue
-            
-            version = version_mappings_input.get(sw_part_number, '').strip() if isinstance(version_mappings_input, dict) else ''
-            if not version:
-                missing_versions.append(sw_part_number)
-            else:
-                version_mappings[sw_part_number] = version
-        
-        if missing_versions:
+        if not feature_names or len(feature_names) == 0:
             return JsonResponse({
                 'success': False,
-                'error': f'Please enter a version for each SW Part Number. Missing versions for: {", ".join(missing_versions)}'
+                'error': 'Please select at least one feature.'
+            })
+        
+        # STEP 1 CONTINUED: Read version from request
+        # If new_version is provided, use it for all SW Part Numbers
+        # Otherwise, try to get from version_mappings dictionary
+        version_mappings = {}
+        missing_versions = []
+        
+        if new_version:
+            # User entered a single version - apply to all selected SW Part Numbers
+            for sw_part_number in sw_part_numbers:
+                sw_part_number = sw_part_number.strip() if sw_part_number else ''
+                if sw_part_number:
+                    version_mappings[sw_part_number] = new_version
+        else:
+            # Try to get from version_mappings dictionary (backward compatibility)
+            for sw_part_number in sw_part_numbers:
+                sw_part_number = sw_part_number.strip() if sw_part_number else ''
+                if not sw_part_number:
+                    continue
+                
+                version = version_mappings_input.get(sw_part_number, '').strip() if isinstance(version_mappings_input, dict) else ''
+                if not version:
+                    missing_versions.append(sw_part_number)
+                else:
+                    version_mappings[sw_part_number] = version
+        
+        # Validate version is provided
+        if not new_version and missing_versions:
+            return JsonResponse({
+                'success': False,
+                'error': f'Version is required. Please enter a version for each SW Part Number. Missing versions for: {", ".join(missing_versions)}'
+            })
+        
+        if not new_version and not version_mappings:
+            return JsonResponse({
+                'success': False,
+                'error': 'Version is required. Please enter a version number.'
             })
         
         # Auto-detect current active version for each SW Part Number
@@ -577,7 +608,8 @@ def create_new_test_instance(request):
                 'sheet_obj': sheet_obj
             }
             
-            # Check completion for each feature
+            # FEATURE-SCOPED VALIDATION: Check completion for each selected feature
+            # Only validate the selected features for this specific Sheet + SW Part Number + Version combination
             for feature_name in feature_names:
                 if not feature_name or not feature_name.strip():
                     continue
@@ -592,18 +624,26 @@ def create_new_test_instance(request):
                     feature=feature_name
                 ).exists()
                 
-                if feature_exists:
-                    total_count, completed_count, is_completed = get_feature_completion(
-                        active_instance, version_obj, sheet_obj, feature_name
-                    )
-                    
-                    if not is_completed:
-                        incomplete_features.append(f'{feature_name} ({completed_count}/{total_count} tests executed) for {sw_part_number}')
+                if not feature_exists:
+                    # Feature doesn't exist - this is an error
+                    incomplete_features.append(f'Feature "{feature_name}" not found for {sw_part_number} (version {old_version})')
+                    continue
+                
+                # Validate feature completion using feature-scoped check
+                total_count, completed_count, is_completed = get_feature_completion(
+                    active_instance, version_obj, sheet_obj, feature_name
+                )
+                
+                if total_count == 0:
+                    incomplete_features.append(f'No test cases found for feature "{feature_name}" under {sw_part_number} (version {old_version})')
+                elif not is_completed:
+                    # Feature is not completed - provide specific error message
+                    incomplete_features.append(f'Feature "{feature_name}" is not completed ({completed_count}/{total_count} tests have status PASS or FAIL) for {sw_part_number}')
         
         if incomplete_features:
             return JsonResponse({
                 'success': False,
-                'error': f'The following features are not fully completed: {", ".join(incomplete_features)}. All tests must be executed (PASS/FAIL) and version must be locked before creating a new instance.'
+                'error': f'Cannot create new instance. The following features are not completed: {", ".join(incomplete_features)}. All test cases for each selected feature must have status PASS or FAIL.'
             })
         
         # Validate that new versions do NOT already exist for each SW Part Number
@@ -775,8 +815,20 @@ def create_new_test_instance(request):
                     try:
                         TestCase.objects.bulk_create(new_test_cases, batch_size=500)
                     except Exception as e:
-                        messages.error(request, f'Error creating new test cases: {str(e)}')
-                        return redirect('create_new_test_instance')
+                        # Inside transaction - must return JSON, not redirect
+                        log_error(
+                            "admin_views.py:create_new_test_instance",
+                            "Error bulk creating test cases",
+                            {
+                                "error": str(e),
+                                "type": type(e).__name__,
+                                "sw_part_number": sw_part_number,
+                                "new_version": new_version,
+                                "test_cases_count": len(new_test_cases)
+                            },
+                            exc_info=True
+                        )
+                        raise  # Re-raise to trigger transaction rollback
                     
                     # Refetch created test cases to get their IDs (needed for foreign key)
                     created_test_case_ids = [tc.test_case_id for tc in new_test_cases]
@@ -835,10 +887,38 @@ def create_new_test_instance(request):
         
     except Exception as e:
         import traceback
+        from ..logging_utils import log_error
+        
+        # DEBUG REQUIREMENT: Log EXACT error
+        error_msg = str(e)
+        error_traceback = traceback.format_exc()
+        
+        # Safely get request data for logging
+        try:
+            request_data = {
+                "sheet": data.get('sheet', '') if 'data' in locals() else '',
+                "sw_part_numbers": sw_part_numbers if 'sw_part_numbers' in locals() else [],
+                "features": feature_names if 'feature_names' in locals() else [],
+                "new_version": new_version if 'new_version' in locals() else '',
+            }
+        except:
+            request_data = {"error": "Could not extract request data"}
+        
+        log_error(
+            "admin_views.py:create_new_test_instance",
+            "Error creating new test instance",
+            {
+                "error": error_msg,
+                "type": type(e).__name__,
+                "traceback": error_traceback,
+                "request_data": request_data
+            },
+            exc_info=True
+        )
+        
         return JsonResponse({
             'success': False,
-            'error': f'Error creating new instance: {str(e)}',
-            'traceback': traceback.format_exc()
+            'error': f'Error creating new instance: {error_msg}'
         }, status=500)
 
 
@@ -854,7 +934,7 @@ def get_feature_completion_status_api(request):
       - sheet_name: Sheet name
       - sw_part_number: SW Part Number
       - app_sw_version: Application SW Version
-      - is_completed: True if feature is fully completed (all tests PASS/FAIL and version locked)
+      - is_completed: True if feature is fully completed (all tests have status PASS/FAIL)
       - executed_count: Number of executed tests
       - total_count: Total number of tests
       - can_create_instance: True if new instance can be created for this feature
