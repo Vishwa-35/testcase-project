@@ -45,7 +45,6 @@ def upload_excel(request):
     """
     # PERMISSION CHECK: Manager only
     if not request.user.is_superuser:
-        from django.contrib import messages
         messages.error(request, "Permission denied. Only managers can upload Excel files.")
         return redirect("home")
     
@@ -84,7 +83,6 @@ def input_versions(request):
     """
     # PERMISSION CHECK: Manager only
     if not request.user.is_superuser:
-        from django.contrib import messages
         messages.error(request, "Permission denied. Only managers can upload Excel files.")
         return redirect("home")
     
@@ -173,7 +171,6 @@ def import_excel(request):
     """
     # PERMISSION CHECK: Manager only
     if not request.user.is_superuser:
-        from django.contrib import messages
         messages.error(request, "Permission denied. Only managers can upload Excel files.")
         return redirect("home")
     

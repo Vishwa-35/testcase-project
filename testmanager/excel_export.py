@@ -382,6 +382,9 @@ def _write_test_case_sheet(ws, qs, latest_versions, active_instance=None):
         ).count()
         executed_count = pass_count + fail_count + not_relevant_count
     
+    # Calculate not_executed_count before any usage
+    not_executed_count = total_test_cases - pass_count - fail_count - not_relevant_count
+    
     summary_row_labels = 8
     summary_row_values = 9
     
@@ -434,11 +437,13 @@ def _write_test_case_sheet(ws, qs, latest_versions, active_instance=None):
     pie_data_col = chart_data_col_start
     ws.cell(row=chart_labels_row, column=pie_labels_col).value = "Passed"
     ws.cell(row=chart_labels_row, column=pie_labels_col + 1).value = "Failed"
-    ws.cell(row=chart_labels_row, column=pie_labels_col + 2).value = "Not Executed"
+    ws.cell(row=chart_labels_row, column=pie_labels_col + 2).value = "Not Relevant"
+    ws.cell(row=chart_labels_row, column=pie_labels_col + 3).value = "Not Executed"
     
     ws.cell(row=chart_data_row, column=pie_data_col).value = pass_count
     ws.cell(row=chart_data_row, column=pie_data_col + 1).value = fail_count
     ws.cell(row=chart_data_row, column=pie_data_col + 2).value = not_relevant_count
+    ws.cell(row=chart_data_row, column=pie_data_col + 3).value = not_executed_count
     
     # Pie Chart: Fixed position F1:G9 (2 columns, 9 rows)
     pie = PieChart()
@@ -448,8 +453,8 @@ def _write_test_case_sheet(ws, qs, latest_versions, active_instance=None):
     # For 2 columns (~1.34 inches) and 9 rows (~1.89 inches):
     pie.width = 3.0  # Fits within 2 columns (F-G)
     pie.height = 4.5  # Fits within 9 rows (1-9)
-    pie_labels = Reference(ws, min_col=pie_labels_col, min_row=chart_labels_row, max_row=chart_labels_row, max_col=pie_labels_col + 2)
-    pie_data = Reference(ws, min_col=pie_data_col, min_row=chart_data_row, max_row=chart_data_row, max_col=pie_data_col + 2)
+    pie_labels = Reference(ws, min_col=pie_labels_col, min_row=chart_labels_row, max_row=chart_labels_row, max_col=pie_labels_col + 3)
+    pie_data = Reference(ws, min_col=pie_data_col, min_row=chart_data_row, max_row=chart_data_row, max_col=pie_data_col + 3)
     pie.add_data(pie_data, titles_from_data=False)
     pie.set_categories(pie_labels)
     # Set pie chart colors: PASS=Green, FAIL=Red, NOT EXECUTED=Yellow

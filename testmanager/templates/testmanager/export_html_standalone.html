@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Test Cases Report - {{ selected_sheet }}</title>
     <style>
-        /* Inline CSS - No external dependencies */
-        {{ inline_css|safe }}
-        
         /* Additional Bootstrap-like utilities */
         .container-fluid { width: 100%; padding: 0 15px; }
         .row { display: flex; flex-wrap: wrap; margin: 0 -15px; }
@@ -318,25 +315,44 @@
         </div>
     </div>
 
+    <!-- JSON data embedded using json_script for safe parsing -->
+    {{ report_data_json|json_script:"report-data" }}
+    {{ all_sheets_json|json_script:"all-sheets" }}
+    {{ all_sw_part_numbers_json|json_script:"all-sw-part-numbers" }}
+    {{ all_features_json|json_script:"all-features" }}
+    {{ status_labels_json|json_script:"status-labels" }}
+    {{ status_values_json|json_script:"status-values" }}
+    {{ sheet_labels_json|json_script:"sheet-labels" }}
+    {{ sheet_values_json|json_script:"sheet-values" }}
+    {{ bar_mode_json|json_script:"bar-mode" }}
+    {{ pass_percentage|json_script:"pass-percentage" }}
+    {{ fail_percentage|json_script:"fail-percentage" }}
+    {{ not_exec_percentage|json_script:"not-exec-percentage" }}
+    {{ executed_percentage|json_script:"executed-percentage" }}
+    {% if inline_js %}
+    {{ inline_js|json_script:"inline-js-data" }}
+    {% endif %}
+
     <script>
         // Inline JavaScript - No external dependencies
         // EMBED ALL DATA AS JSON FOR OFFLINE FILTERING
-        const REPORT_DATA = {{ report_data_json|safe }};
-        const ALL_SHEETS = {{ all_sheets_json|safe }};
-        const ALL_SW_PART_NUMBERS = {{ all_sw_part_numbers_json|safe }};
-        const ALL_FEATURES = {{ all_features_json|safe }};
+        // Parse JSON data from json_script tags
+        const REPORT_DATA = JSON.parse(document.getElementById('report-data').textContent || '[]');
+        const ALL_SHEETS = JSON.parse(document.getElementById('all-sheets').textContent || '[]');
+        const ALL_SW_PART_NUMBERS = JSON.parse(document.getElementById('all-sw-part-numbers').textContent || '[]');
+        const ALL_FEATURES = JSON.parse(document.getElementById('all-features').textContent || '[]');
         
         // Chart data
-        const statusLabels = {{ status_labels_json|safe }};
-        const statusValues = {{ status_values_json|safe }};
-        const sheetLabels = {{ sheet_labels_json|safe }};
-        const sheetValues = {{ sheet_values_json|safe }};
-        const barMode = {{ bar_mode_json|safe }};
+        const statusLabels = JSON.parse(document.getElementById('status-labels').textContent || '[]');
+        const statusValues = JSON.parse(document.getElementById('status-values').textContent || '[]');
+        const sheetLabels = JSON.parse(document.getElementById('sheet-labels').textContent || '[]');
+        const sheetValues = JSON.parse(document.getElementById('sheet-values').textContent || '[]');
+        const barMode = JSON.parse(document.getElementById('bar-mode').textContent || '"group"');
         
-        const PASS_PERCENTAGE = {{ pass_percentage|default:0 }};
-        const FAIL_PERCENTAGE = {{ fail_percentage|default:0 }};
-        const NOT_EXEC_PERCENTAGE = {{ not_exec_percentage|default:0 }};
-        const EXECUTED_PERCENTAGE = {{ executed_percentage|default:0 }};
+        const PASS_PERCENTAGE = JSON.parse(document.getElementById('pass-percentage').textContent || '0');
+        const FAIL_PERCENTAGE = JSON.parse(document.getElementById('fail-percentage').textContent || '0');
+        const NOT_EXEC_PERCENTAGE = JSON.parse(document.getElementById('not-exec-percentage').textContent || '0');
+        const EXECUTED_PERCENTAGE = JSON.parse(document.getElementById('executed-percentage').textContent || '0');
         
         // OFFLINE FILTERING FUNCTIONS (Pure JavaScript, no backend calls)
         function getStatusBadge(status) {
@@ -595,7 +611,17 @@
         });
         
         // Inline JS from export_html.js (if needed for additional functionality)
-        {{ inline_js|safe }}
+        const inlineJsElement = document.getElementById('inline-js-data');
+        if (inlineJsElement) {
+            const inlineJs = inlineJsElement.textContent;
+            if (inlineJs && inlineJs.trim()) {
+                try {
+                    eval(inlineJs);
+                } catch (e) {
+                    console.error('Error executing inline JS:', e);
+                }
+            }
+        }
     </script>
 </body>
 </html>
