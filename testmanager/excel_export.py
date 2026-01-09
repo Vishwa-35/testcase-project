@@ -11,7 +11,7 @@ import openpyxl
 from openpyxl.styles import PatternFill, Font, Alignment
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import PieChart, BarChart, Reference
-from openpyxl.drawing.colors import Color
+from openpyxl.chart.series import DataPoint
 from functools import reduce
 from operator import or_
 
@@ -438,7 +438,7 @@ def _write_test_case_sheet(ws, qs, latest_versions, active_instance=None):
     
     ws.cell(row=chart_data_row, column=pie_data_col).value = pass_count
     ws.cell(row=chart_data_row, column=pie_data_col + 1).value = fail_count
-    ws.cell(row=chart_data_row, column=pie_data_col + 2).value = not_executed_count
+    ws.cell(row=chart_data_row, column=pie_data_col + 2).value = not_relevant_count
     
     # Pie Chart: Fixed position F1:G9 (2 columns, 9 rows)
     pie = PieChart()
@@ -453,11 +453,17 @@ def _write_test_case_sheet(ws, qs, latest_versions, active_instance=None):
     pie.add_data(pie_data, titles_from_data=False)
     pie.set_categories(pie_labels)
     # Set pie chart colors: PASS=Green, FAIL=Red, NOT EXECUTED=Yellow
-    # Colors in ARGB format (without alpha, so RGB hex)
+    # Colors in hex format (RGB hex string)
     pie_colors = ['28B70B', 'FF0202', 'FDF90E']  # Green, Red, Yellow
-    for i, series in enumerate(pie.series):
-        if i < len(pie_colors):
-            series.graphicalProperties.solidFill = Color(rgb=pie_colors[i])
+    for series in pie.series:
+        # Set colors on data points for pie chart (each slice gets a color)
+        for idx, color in enumerate(pie_colors):
+            dp = DataPoint(idx=idx)
+            dp.graphicalProperties.solidFill = color
+            if idx < len(series.dataPoints):
+                series.dataPoints[idx] = dp
+            else:
+                series.dataPoints.append(dp)
     # Anchor at F1 - chart will fit within F1:G9
     pie.anchor = "F1"
     ws.add_chart(pie, "F1")
@@ -490,9 +496,15 @@ def _write_test_case_sheet(ws, qs, latest_versions, active_instance=None):
     bar.set_categories(bar_labels)
     # Set bar chart colors: Total=Blue, Executed=Orange, Passed=Green
     bar_colors = ['0D6EFD', 'FF8C00', '28B70B']  # Blue, Orange, Green
-    for i, series in enumerate(bar.series):
-        if i < len(bar_colors):
-            series.graphicalProperties.solidFill = Color(rgb=bar_colors[i])
+    for series in bar.series:
+        # Set colors on data points for bar chart (each bar gets a color)
+        for idx, color in enumerate(bar_colors):
+            dp = DataPoint(idx=idx)
+            dp.graphicalProperties.solidFill = color
+            if idx < len(series.dataPoints):
+                series.dataPoints[idx] = dp
+            else:
+                series.dataPoints.append(dp)
     # Anchor at H1 - chart will fit within H1:K9
     bar.anchor = "H1"
     ws.add_chart(bar, "H1")
