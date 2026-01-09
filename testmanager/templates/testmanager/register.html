@@ -159,6 +159,13 @@
         .input-group-icon .form-control {
             padding-left: 44px;
         }
+        
+        .input-group-icon select.form-control {
+            padding-left: 44px;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+        }
     </style>
 </head>
 <body>
@@ -215,6 +222,26 @@
                             {% endif %}
                             {% if form.email.help_text %}
                                 <small class="form-text">{{ form.email.help_text }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label">
+                                Role <span class="required">*</span>
+                            </label>
+                            <div class="input-group-icon">
+                                <i class="bi bi-briefcase"></i>
+                                {{ form.role }}
+                            </div>
+                            {% if form.role.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.role.errors.0 }}
+                                </div>
+                            {% endif %}
+                            {% if form.role.help_text %}
+                                <small class="form-text">{{ form.role.help_text }}</small>
                             {% endif %}
                         </div>
                     </div>

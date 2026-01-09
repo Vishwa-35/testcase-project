@@ -38,6 +38,17 @@ class UserRegistrationForm(ModelForm):
         label="Email Address",
         help_text="Must be a @tvsmotor.com email address."
     )
+    role = forms.ChoiceField(
+        choices=[
+            ('Manager', 'Manager'),
+            ('Developer', 'Developer'),
+            ('Tester', 'Tester'),
+        ],
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        required=True,
+        label="Role",
+        help_text="Select user role. Manager will be granted superuser privileges."
+    )
     
     class Meta:
         model = User
@@ -122,9 +133,45 @@ def register_user(request):
             user = form.save(commit=False)
             user.set_password(form.cleaned_data['password'])
             user.is_active = True
+            
+            # Get selected role
+            role = form.cleaned_data.get('role', 'Tester')
+            
+            # If Manager role selected, make user superuser
+            if role == 'Manager':
+                user.is_superuser = True
+                user.is_staff = True  # Staff is required for admin access
+            
             user.save()
             
-            messages.success(request, "User created successfully. Please login.")
+            # Create UserProfile (if UserProfile model exists)
+            try:
+                from ..models import UserProfile
+                # Generate employee_id from username (ensure uniqueness)
+                employee_id = user.username
+                # If employee_id already exists, append user ID
+                if UserProfile.objects.filter(employee_id=employee_id).exists():
+                    employee_id = f"{user.username}_{user.id}"
+                
+                # Create profile with role
+                UserProfile.objects.get_or_create(
+                    user=user,
+                    defaults={
+                        'employee_id': employee_id,
+                        'full_name': user.get_full_name() or user.username,
+                        'role': role
+                    }
+                )
+            except ImportError:
+                # UserProfile model doesn't exist, skip
+                pass
+            except Exception as e:
+                # If profile creation fails, log but don't fail user creation
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Failed to create UserProfile for {user.username}: {e}")
+            
+            messages.success(request, f"User '{user.username}' created successfully with role '{role}'. Please login.")
             return redirect('login')
     else:
         form = UserRegistrationForm()
